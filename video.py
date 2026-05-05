@@ -10,11 +10,14 @@ from typing import Union
 import imageio.v2 as imageio
 import numpy as np
 from PIL import Image
+from PIL.Image import Resampling
 
 
 def _normalize_frame(img: np.ndarray, target_size: tuple[int, int]) -> np.ndarray:
     """Resize frame to target (H, W) using Pillow for consistent dimensions."""
-    pil_img = Image.fromarray(img).resize((target_size[1], target_size[0]), Image.LANCZOS)
+    pil_img = Image.fromarray(img).resize(
+        (target_size[1], target_size[0]), Resampling.LANCZOS
+    )
     return np.array(pil_img)
 
 
@@ -45,7 +48,7 @@ def make_video(
             for f in frames:
                 img = imageio.imread(f)
                 img = _normalize_frame(img, target_size)
-                writer.append_data(img)
+                writer.append_data(img)  # type: ignore[attr-defined]
         print(f"Video saved to {output_path} ({len(frames)} frames)")
     except Exception as e:
         print(f"MP4 writer failed ({e}), falling back to GIF output.")
