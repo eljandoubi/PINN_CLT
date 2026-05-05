@@ -42,6 +42,35 @@ git clone https://github.com/eljandoubi/PINN_CLT.git && cd PINN_CLT
 uv sync
 ```
 
+### System FFmpeg (required for MP4 video export)
+
+The `video.py` script uses `imageio-ffmpeg` which bundles its own ffmpeg binary. If you prefer using a system-installed ffmpeg or encounter issues, install it natively:
+
+**macOS (Homebrew):**
+```bash
+brew install ffmpeg
+```
+
+**Ubuntu / Debian:**
+```bash
+sudo apt update && sudo apt install ffmpeg
+```
+
+**Fedora / RHEL:**
+```bash
+sudo dnf install ffmpeg
+```
+
+**Windows (winget):**
+```powershell
+winget install FFmpeg
+```
+
+**Windows (Chocolatey):**
+```powershell
+choco install ffmpeg
+```
+
 ## Usage
 
 ### Train from scratch
