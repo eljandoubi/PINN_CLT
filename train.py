@@ -31,12 +31,12 @@ class TrainingConfig:
     hidden_units: int = 64
     learning_rate: float = 1e-3
     epochs: int = 100000
-    lambda_physics: float = 100.0
-    lambda_boundary: float = 1000.0
+    lambda_physics: float = 1e-3
+    lambda_boundary: float = 1.0
     scheduler_step: int = 10000
     scheduler_gamma: float = 0.5
     batch_size: int = int(2**13)
-    log_every: int = 100
+    log_every: int = 1000
     checkpoint_every: int = 1000
     runs_dir: str | Path = "runs"
     checkpoint_dir: Path = Path("checkpoints")
