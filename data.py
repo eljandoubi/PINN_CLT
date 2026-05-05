@@ -44,7 +44,7 @@ PRESSURE = 10000.0  # Uniform transverse pressure (Pa)
 
 # --- 2. GENERATE THE DATA POINTS AS TORCH TENSORS ---
 
-N_BOUNDARY = 200  # Points on boundaries
+N_BOUNDARY = 256  # Points on boundaries
 
 # a) Boundary Condition Data (fixed edge at x=0: w=0, dw/dx=0)
 y_boundary = torch.linspace(0, PLATE_WIDTH, N_BOUNDARY, device=device).unsqueeze(1)
