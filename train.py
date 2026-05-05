@@ -3,6 +3,7 @@ from pathlib import Path
 
 import torch
 import wandb
+from dotenv import load_dotenv
 from simple_parsing import ArgumentParser
 from tqdm import trange
 
@@ -18,6 +19,8 @@ from early_stopping import EarlyStopping
 from model import PINN, compute_boundary_loss, compute_pde_residual
 from plotting import plot_displacement
 from video import make_video
+
+print("Loading environment variables...", load_dotenv())
 
 
 @dataclass
