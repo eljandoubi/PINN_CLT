@@ -43,8 +43,8 @@ def plot_displacement_3d(
         cmap="viridis",
         linewidth=0,
         antialiased=True,
-        rcount= n_points,
-        ccount= n_points,
+        rcount=n_points,
+        ccount=n_points,
     )
     fig.colorbar(surf, ax=ax, shrink=0.6, label="w (m)")
     ax.set_xlabel("x (m)")
