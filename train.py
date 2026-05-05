@@ -31,8 +31,8 @@ class TrainingConfig:
     hidden_units: int = 64
     learning_rate: float = 1e-3
     epochs: int = 100000
-    lambda_physics: float = 1.0
-    lambda_boundary: float = 10.0
+    lambda_physics: float = 100.0
+    lambda_boundary: float = 1000.0
     scheduler_step: int = 10000
     scheduler_gamma: float = 0.5
     batch_size: int = int(2**13)
@@ -179,7 +179,7 @@ def main(config: TrainingConfig):
         loss_count += 1
 
         # Logging
-        if epoch % config.log_every == 0 or epoch == 1:
+        if epoch % config.log_every == 0:
             avg_loss = loss_accumulator / loss_count
             wandb.log(
                 {
