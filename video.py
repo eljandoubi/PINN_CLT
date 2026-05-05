@@ -7,8 +7,15 @@ fall back to saving a GIF using Pillow.
 from pathlib import Path
 from typing import Union
 
-import imageio
+import imageio.v2 as imageio
+import numpy as np
 from PIL import Image
+
+
+def _normalize_frame(img: np.ndarray, target_size: tuple[int, int]) -> np.ndarray:
+    """Resize frame to target (H, W) using Pillow for consistent dimensions."""
+    pil_img = Image.fromarray(img).resize((target_size[1], target_size[0]), Image.LANCZOS)
+    return np.array(pil_img)
 
 
 def make_video(
@@ -25,10 +32,19 @@ def make_video(
         return
 
     try:
-        # Use imageio writer (uses ffmpeg under the hood if available)
-        with imageio.get_writer(str(output_path), fps=fps, codec="libx264") as writer:
+        # Read first frame to determine target size (divisible by 16)
+        first = imageio.imread(frames[0])
+        h, w = first.shape[:2]
+        new_h = int(np.ceil(h / 16) * 16)
+        new_w = int(np.ceil(w / 16) * 16)
+        target_size = (new_h, new_w)
+
+        with imageio.get_writer(
+            str(output_path), fps=fps, codec="libx264", macro_block_size=1
+        ) as writer:
             for f in frames:
                 img = imageio.imread(f)
+                img = _normalize_frame(img, target_size)
                 writer.append_data(img)
         print(f"Video saved to {output_path} ({len(frames)} frames)")
     except Exception as e:
