@@ -24,7 +24,7 @@ def plot_displacement_3d(
     save_dir.mkdir(parents=True, exist_ok=True)
 
     model.eval()
-    with torch.no_grad():
+    with torch.inference_mode():
         x = torch.linspace(0, PLATE_LENGTH, n_points, device=device)
         y = torch.linspace(0, PLATE_WIDTH, n_points, device=device)
         X, Y = torch.meshgrid(x, y, indexing="ij")

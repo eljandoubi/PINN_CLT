@@ -32,7 +32,7 @@ class PINN(nn.Module):
         return self.net(xy)
 
 
-def compute_pde_residual(model, xy, material_props):
+def compute_pde_residual(model, xy, material_props, normalize=False):
     """
     Compute the residual of the orthotropic plate PDE:
         D11·∂⁴w/∂x⁴ + 2(D12+2D66)·∂⁴w/∂x²∂y² + D22·∂⁴w/∂y⁴ - q = 0
@@ -88,7 +88,10 @@ def compute_pde_residual(model, xy, material_props):
 
     # PDE residual (normalize by D11 to stabilize magnitudes)
     numerator = D11 * d4w_dx4 + 2 * (D12 + 2 * D66) * d4w_dx2dy2 + D22 * d4w_dy4 - q
-    residual = numerator / (D11 + 1e-12)
+    if normalize:
+        residual = numerator / (D11 + 1e-12)
+    else:
+        residual = numerator
 
     return residual
 
