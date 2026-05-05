@@ -45,30 +45,16 @@ PRESSURE = 10000.0  # Uniform transverse pressure (Pa)
 # --- 2. GENERATE THE DATA POINTS AS TORCH TENSORS ---
 
 N_BOUNDARY = 200  # Points on boundaries
-N_PHYSICS = 10000  # Collocation points inside the domain
 
 # a) Boundary Condition Data (fixed edge at x=0: w=0, dw/dx=0)
 y_boundary = torch.linspace(0, PLATE_WIDTH, N_BOUNDARY, device=device).unsqueeze(1)
 x_boundary = torch.zeros_like(y_boundary)
 w_boundary = torch.zeros_like(y_boundary)
 
-# b) Free edges boundary data (y=0 and y=W: moment My=0, shear Vy=0)
-x_free = torch.linspace(0, PLATE_LENGTH, N_BOUNDARY, device=device).unsqueeze(1)
-y_free_bottom = torch.zeros_like(x_free)
-y_free_top = torch.full_like(x_free, PLATE_WIDTH)
-
-# c) Simply supported edge at x=L (w=0, Mx=0)
+# b) Simply supported edge at x=L (w=0, Mx=0)
 y_ss = torch.linspace(0, PLATE_WIDTH, N_BOUNDARY, device=device).unsqueeze(1)
 x_ss = torch.full_like(y_ss, PLATE_LENGTH)
 w_ss = torch.zeros_like(y_ss)
-
-# d) Collocation Points for Physics Loss (interior domain)
-x_collocation = (torch.rand(N_PHYSICS, 1, device=device) * PLATE_LENGTH).requires_grad_(
-    True
-)
-y_collocation = (torch.rand(N_PHYSICS, 1, device=device) * PLATE_WIDTH).requires_grad_(
-    True
-)
 
 # --- 3. PACKAGE DATA INTO DICTIONARIES ---
 
@@ -77,20 +63,10 @@ boundary_data = {
         "xy": torch.cat([x_boundary, y_boundary], dim=1),
         "w": w_boundary,
     },
-    "free_edge_bottom": {
-        "xy": torch.cat([x_free, y_free_bottom], dim=1),
-    },
-    "free_edge_top": {
-        "xy": torch.cat([x_free, y_free_top], dim=1),
-    },
     "simply_supported": {
         "xy": torch.cat([x_ss, y_ss], dim=1),
         "w": w_ss,
     },
-}
-
-collocation_data = {
-    "xy": torch.cat([x_collocation, y_collocation], dim=1),
 }
 
 material_props = {
@@ -105,9 +81,6 @@ material_props = {
 
 print(f"\n--- Data Summary (device: {device}) ---")
 print(f"Fixed edge points: {boundary_data['fixed_edge']['xy'].shape}")
-print(f"Free edge (bottom) points: {boundary_data['free_edge_bottom']['xy'].shape}")
-print(f"Free edge (top) points: {boundary_data['free_edge_top']['xy'].shape}")
 print(f"Simply supported points: {boundary_data['simply_supported']['xy'].shape}")
-print(f"Collocation points: {collocation_data['xy'].shape}")
 print("\nGoverning PDE (orthotropic plate):")
 print("  D11·∂⁴w/∂x⁴ + 2(D12+2D66)·∂⁴w/∂x²∂y² + D22·∂⁴w/∂y⁴ = q")
