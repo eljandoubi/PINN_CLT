@@ -29,7 +29,11 @@ def make_video(
     plot_dir = Path(plot_dir)
     output_path = Path(output_path)
 
-    frames = sorted(plot_dir.glob("w_epoch_*.png"))
+    # Prefer 3D frames if present (named w_epoch_XXXXXX_3d.png)
+    frames = sorted(plot_dir.glob("w_epoch_*_3d.png"))
+    if not frames:
+        # Fall back to any w_epoch_*.png
+        frames = sorted(plot_dir.glob("w_epoch_*.png"))
     if not frames:
         print("No plot frames found.")
         return
