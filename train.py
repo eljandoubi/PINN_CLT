@@ -17,7 +17,7 @@ from data import (
 )
 from early_stopping import EarlyStopping
 from model import PINN, compute_boundary_loss, compute_pde_residual
-from plotting import plot_displacement
+from plotting import plot_displacement_3d
 from video import make_video
 
 print("Loading environment variables...", load_dotenv())
@@ -223,8 +223,8 @@ def main(config: TrainingConfig):
                     epoch,
                     best_loss,
                 )
-                # Plot displacement
-                fig_path = plot_displacement(model, epoch, save_dir=config.plot_dir)
+                # Plot 3D displacement
+                fig_path = plot_displacement_3d(model, epoch, save_dir=config.plot_dir)
                 wandb.log({"displacement": wandb.Image(str(fig_path))}, step=epoch)
 
             # Reset accumulator
@@ -240,7 +240,7 @@ def main(config: TrainingConfig):
         epoch,
         best_loss,
     )
-    plot_displacement(model, epoch, save_dir=config.plot_dir)
+    plot_displacement_3d(model, epoch, save_dir=config.plot_dir)
 
     # --- GENERATE VIDEO ---
     video_path = config.run_dir / "displacement_evolution.mp4"
