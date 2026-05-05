@@ -41,7 +41,33 @@ class TrainingConfig:
     checkpoint_dir: str = "checkpoints"
     plot_dir: str = "plots"
     resume: str = ""  # Path to checkpoint to resume from
-    patience: int = 2000  # Early stopping patience
+    patience: int = 10  # Early stopping patience
+
+    def __post_init__(self):
+        assert self.hidden_layers > 0, "hidden_layers must be > 0"
+        assert self.hidden_units > 0, "hidden_units must be > 0"
+        assert self.learning_rate > 0, "learning_rate must be > 0"
+        assert self.epochs > 0, "epochs must be > 0"
+        assert self.lambda_physics >= 0, "lambda_physics must be >= 0"
+        assert self.lambda_boundary >= 0, "lambda_boundary must be >= 0"
+        assert self.scheduler_step > 0, "scheduler_step must be > 0"
+        assert self.scheduler_gamma > 0 and self.scheduler_gamma < 1, (
+            "scheduler_gamma must be in (0,1)"
+        )
+        assert self.batch_size > 0, "batch_size must be > 0"
+        assert self.log_every > 0, "log_every must be > 0"
+        assert self.checkpoint_every > 0, "checkpoint_every must be > 0"
+        assert self.patience >= 0, "patience must be >= 0"
+        if self.resume:
+            assert Path(self.resume).is_file(), (
+                f"Checkpoint file {self.resume} does not exist"
+            )
+        assert self.checkpoint_every % self.log_every == 0, (
+            "checkpoint_every must be a multiple of log_every"
+        )
+        assert self.log_every % self.patience == 0, (
+            "log_every must be a multiple of patience"
+        )
 
 
 def main(config: TrainingConfig):
@@ -79,6 +105,8 @@ def main(config: TrainingConfig):
 
     # --- TRAINING LOOP ---
     pbar = trange(start_epoch, config.epochs + 1, desc="Training")
+    loss_accumulator = 0.0
+    loss_count = 0
     for epoch in pbar:
         model.train()
         optimizer.zero_grad(set_to_none=True)
@@ -108,53 +136,61 @@ def main(config: TrainingConfig):
         scheduler.step()
 
         current_loss = total_loss.item()
+        loss_accumulator += current_loss
+        loss_count += 1
 
         # Logging
         if epoch % config.log_every == 0 or epoch == 1:
+            avg_loss = loss_accumulator / loss_count
             wandb.log(
                 {
-                    "epoch": epoch,
                     "loss/total": current_loss,
+                    "loss/avg": avg_loss,
                     "loss/physics": loss_physics.item(),
                     "loss/boundary": loss_boundary.item(),
                     "lr": optimizer.param_groups[0]["lr"],
-                }
+                },
+                step=epoch,
             )
             pbar.set_postfix(
-                total=f"{current_loss:.2e}",
+                avg=f"{avg_loss:.2e}",
                 phys=f"{loss_physics.item():.2e}",
                 bc=f"{loss_boundary.item():.2e}",
             )
 
-        # Checkpoint + plot
-        if epoch % config.checkpoint_every == 0:
-            if current_loss < best_loss:
-                best_loss = current_loss
-            save_checkpoint(
-                Path(config.checkpoint_dir) / f"ckpt_epoch_{epoch:06d}.pt",
-                model,
-                optimizer,
-                scheduler,
-                epoch,
-                best_loss,
-            )
-            # Save best model separately
-            save_checkpoint(
-                Path(config.checkpoint_dir) / "best.pt",
-                model,
-                optimizer,
-                scheduler,
-                epoch,
-                best_loss,
-            )
-            # Plot displacement
-            fig_path = plot_displacement(model, epoch, save_dir=config.plot_dir)
-            wandb.log({"displacement": wandb.Image(str(fig_path))})
+            # Early stopping on avg loss
+            if early_stop.step(avg_loss):
+                print(f"\nEarly stopping at epoch {epoch} (avg_loss={avg_loss:.6e})")
+                break
 
-        # Early stopping
-        if early_stop.step(current_loss):
-            print(f"\nEarly stopping at epoch {epoch}")
-            break
+            # Checkpoint + plot
+            if epoch % config.checkpoint_every == 0:
+                if avg_loss < best_loss:
+                    best_loss = avg_loss
+                    # Save best model separately
+                    save_checkpoint(
+                        Path(config.checkpoint_dir) / "best.pt",
+                        model,
+                        optimizer,
+                        scheduler,
+                        epoch,
+                        best_loss,
+                    )
+                save_checkpoint(
+                    Path(config.checkpoint_dir) / f"ckpt_epoch_{epoch:06d}.pt",
+                    model,
+                    optimizer,
+                    scheduler,
+                    epoch,
+                    best_loss,
+                )
+                # Plot displacement
+                fig_path = plot_displacement(model, epoch, save_dir=config.plot_dir)
+                wandb.log({"displacement": wandb.Image(str(fig_path))}, step=epoch)
+
+            # Reset accumulator
+            loss_accumulator = 0.0
+            loss_count = 0
 
     # --- FINAL SAVE & PLOT ---
     save_checkpoint(
@@ -170,7 +206,7 @@ def main(config: TrainingConfig):
     # --- GENERATE VIDEO ---
     video_path = "displacement_evolution.mp4"
     make_video(plot_dir=config.plot_dir, output_path=video_path)
-    wandb.log({"video": wandb.Video(video_path)})
+    wandb.log({"video": wandb.Video(video_path)}, step=epoch)
 
     wandb.finish()
     print("Training complete.")

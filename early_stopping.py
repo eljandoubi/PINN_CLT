@@ -4,7 +4,7 @@
 class EarlyStopping:
     """Stop training when loss stops improving."""
 
-    def __init__(self, patience: int = 500, min_delta: float = 1e-8):
+    def __init__(self, patience: int = 5, min_delta: float = 1e-8):
         self.patience = patience
         self.min_delta = min_delta
         self.counter = 0
