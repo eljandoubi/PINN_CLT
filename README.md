@@ -36,7 +36,7 @@ D11·∂⁴w/∂x⁴ + 2(D12 + 2·D66)·∂⁴w/∂x²∂y² + D22·∂⁴w/∂y
 
 ```bash
 # Clone the repository
-git clone <repo-url> && cd PINN_CLT
+git clone https://github.com/eljandoubi/PINN_CLT.git && cd PINN_CLT
 
 # Install dependencies (requires uv)
 uv sync
