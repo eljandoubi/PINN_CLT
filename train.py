@@ -38,10 +38,12 @@ class TrainingConfig:
     batch_size: int = 2048
     log_every: int = 100
     checkpoint_every: int = 1000
-    checkpoint_dir: str = "checkpoints"
-    plot_dir: str = "plots"
+    runs_dir: str | Path = "runs"
+    checkpoint_dir: Path = Path("checkpoints")
+    plot_dir: Path = Path("plots")
     resume: str = ""  # Path to checkpoint to resume from
     patience: int = 10  # Early stopping patience
+    run_id: str | None = None  # Optional run ID for logging (overrides auto-generated)
 
     def __post_init__(self):
         assert self.hidden_layers > 0, "hidden_layers must be > 0"
@@ -69,10 +71,45 @@ class TrainingConfig:
             "log_every must be a multiple of patience"
         )
 
+    def set_id(self, run_id: str):
+        """Set run ID (for logging) after initialization."""
+        self.run_id = run_id
+
+    def update_paths(self):
+        """Update checkpoint and plot directories based on base run directory."""
+        assert self.run_id is not None, "run_id must be set before updating paths"
+
+        self.run_dir = Path(self.runs_dir) / self.run_id
+        self.checkpoint_dir = self.run_dir / Path(self.checkpoint_dir)
+        self.plot_dir = self.run_dir / Path(self.plot_dir)
+        self.checkpoint_dir.mkdir(parents=True, exist_ok=True)
+        self.plot_dir.mkdir(parents=True, exist_ok=True)
+        assert isinstance(self.checkpoint_dir, Path) and isinstance(
+            self.plot_dir, Path
+        ), "checkpoint_dir and plot_dir must be Path objects after update_paths()"
+
 
 def main(config: TrainingConfig):
     # --- WANDB INIT ---
-    wandb.init(project="PINN_CLT", config=vars(config))
+    run = wandb.init(
+        project="PINN_CLT",
+        config=vars(config),
+        id=config.run_id,
+        resume="allow" if config.run_id else None,
+    )
+    config.set_id(run.id)
+    config.update_paths()
+
+    # Update wandb config with run paths
+    wandb.config.update(
+        {
+            "run_dir": str(config.run_dir),
+            "run_id": run.id,
+            "checkpoint_dir": str(config.checkpoint_dir),
+            "plot_dir": str(config.plot_dir),
+        },
+        allow_val_change=True,
+    )
 
     # --- MODEL SETUP ---
     model = PINN(
@@ -171,7 +208,7 @@ def main(config: TrainingConfig):
                     best_loss = avg_loss
                     # Save best model separately
                     save_checkpoint(
-                        Path(config.checkpoint_dir) / "best.pt",
+                        config.checkpoint_dir / "best.pt",
                         model,
                         optimizer,
                         scheduler,
@@ -179,7 +216,7 @@ def main(config: TrainingConfig):
                         best_loss,
                     )
                 save_checkpoint(
-                    Path(config.checkpoint_dir) / f"ckpt_epoch_{epoch:06d}.pt",
+                    config.checkpoint_dir / f"ckpt_epoch_{epoch:06d}.pt",
                     model,
                     optimizer,
                     scheduler,
@@ -196,7 +233,7 @@ def main(config: TrainingConfig):
 
     # --- FINAL SAVE & PLOT ---
     save_checkpoint(
-        Path(config.checkpoint_dir) / "final.pt",
+        config.checkpoint_dir / "final.pt",
         model,
         optimizer,
         scheduler,
@@ -206,9 +243,9 @@ def main(config: TrainingConfig):
     plot_displacement(model, epoch, save_dir=config.plot_dir)
 
     # --- GENERATE VIDEO ---
-    video_path = "displacement_evolution.mp4"
+    video_path = config.run_dir / "displacement_evolution.mp4"
     make_video(plot_dir=config.plot_dir, output_path=video_path)
-    wandb.log({"video": wandb.Video(video_path)}, step=epoch)
+    wandb.log({"video": wandb.Video(str(video_path))}, step=epoch)
 
     wandb.finish()
     print("Training complete.")
