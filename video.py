@@ -1,18 +1,21 @@
-"""Create a video from saved displacement plots."""
+"""Create a video from saved displacement plots.
+
+This uses imageio to write an MP4. If imageio/ffmpeg is unavailable it will
+fall back to saving a GIF using Pillow.
+"""
 
 from pathlib import Path
+from typing import Union
 
-import matplotlib.animation as animation
-import matplotlib.pyplot as plt
+import imageio
 from PIL import Image
 
 
 def make_video(
-    plot_dir: str | Path = "plots",
-    output_path: str | Path = "displacement_evolution.mp4",
+    plot_dir: Union[str, Path] = "plots",
+    output_path: Union[str, Path] = "displacement_evolution.mp4",
     fps: int = 10,
 ):
-    """Create an MP4 video from saved plot images."""
     plot_dir = Path(plot_dir)
     output_path = Path(output_path)
 
@@ -21,24 +24,26 @@ def make_video(
         print("No plot frames found.")
         return
 
-    # Read first frame to get dimensions
-    first = Image.open(frames[0])
-    fig, ax = plt.subplots(figsize=(first.width / 150, first.height / 150), dpi=150)
-    ax.axis("off")
-    fig.subplots_adjust(left=0, right=1, top=1, bottom=0)
-
-    im = ax.imshow(first)
-
-    def update(frame_path):
-        im.set_data(Image.open(frame_path))
-        return [im]
-
-    ani = animation.FuncAnimation(
-        fig, update, frames=frames, interval=1000 // fps, blit=True
-    )
-    ani.save(str(output_path), writer="ffmpeg", fps=fps)
-    plt.close(fig)
-    print(f"Video saved to {output_path} ({len(frames)} frames)")
+    try:
+        # Use imageio writer (uses ffmpeg under the hood if available)
+        with imageio.get_writer(str(output_path), fps=fps, codec="libx264") as writer:
+            for f in frames:
+                img = imageio.imread(f)
+                writer.append_data(img)
+        print(f"Video saved to {output_path} ({len(frames)} frames)")
+    except Exception as e:
+        print(f"MP4 writer failed ({e}), falling back to GIF output.")
+        # Fallback: create animated GIF using Pillow
+        imgs = [Image.open(f).convert("RGBA") for f in frames]
+        gif_path = output_path.with_suffix(".gif")
+        imgs[0].save(
+            gif_path,
+            save_all=True,
+            append_images=imgs[1:],
+            duration=int(1000 / fps),
+            loop=0,
+        )
+        print(f"GIF saved to {gif_path} ({len(frames)} frames)")
 
 
 if __name__ == "__main__":

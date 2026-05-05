@@ -79,14 +79,16 @@ def compute_pde_residual(model, xy, material_props):
         d3w_dx2dy, y, grad_outputs=ones, create_graph=True
     )[0]
 
-    D11 = material_props["D11"]
-    D22 = material_props["D22"]
-    D12 = material_props["D12"]
-    D66 = material_props["D66"]
-    q = material_props["pressure"]
+    # Extract material properties (convert to tensors on same device/dtype)
+    D11 = torch.as_tensor(material_props["D11"], device=w.device, dtype=w.dtype)
+    D22 = torch.as_tensor(material_props["D22"], device=w.device, dtype=w.dtype)
+    D12 = torch.as_tensor(material_props["D12"], device=w.device, dtype=w.dtype)
+    D66 = torch.as_tensor(material_props["D66"], device=w.device, dtype=w.dtype)
+    q = torch.as_tensor(material_props["pressure"], device=w.device, dtype=w.dtype)
 
-    # PDE residual
-    residual = D11 * d4w_dx4 + 2 * (D12 + 2 * D66) * d4w_dx2dy2 + D22 * d4w_dy4 - q
+    # PDE residual (normalize by D11 to stabilize magnitudes)
+    numerator = D11 * d4w_dx4 + 2 * (D12 + 2 * D66) * d4w_dx2dy2 + D22 * d4w_dy4 - q
+    residual = numerator / (D11 + 1e-12)
 
     return residual
 
