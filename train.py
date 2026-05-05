@@ -2,11 +2,11 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import torch
-import wandb
 from dotenv import load_dotenv
 from simple_parsing import ArgumentParser
 from tqdm import trange
 
+import wandb
 from checkpoint import load_checkpoint, save_checkpoint
 from data import (
     PLATE_LENGTH,
@@ -30,12 +30,12 @@ class TrainingConfig:
     hidden_layers: int = 4
     hidden_units: int = 64
     learning_rate: float = 1e-3
-    epochs: int = 50000
+    epochs: int = 100000
     lambda_physics: float = 1.0
     lambda_boundary: float = 10.0
-    scheduler_step: int = 5000
+    scheduler_step: int = 10000
     scheduler_gamma: float = 0.5
-    batch_size: int = 2048
+    batch_size: int = int(2**13)
     log_every: int = 100
     checkpoint_every: int = 1000
     runs_dir: str | Path = "runs"
