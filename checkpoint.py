@@ -35,7 +35,7 @@ def load_checkpoint(
     device: torch.device,
 ) -> tuple[int, float]:
     """Load training checkpoint. Returns (start_epoch, best_loss)."""
-    ckpt = torch.load(path, map_location=device, weights_only=True)
+    ckpt = torch.load(path, map_location=device)
     model.load_state_dict(ckpt["model_state_dict"])
     optimizer.load_state_dict(ckpt["optimizer_state_dict"])
     scheduler.load_state_dict(ckpt["scheduler_state_dict"])
