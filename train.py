@@ -39,6 +39,7 @@ class TrainingConfig:
     lambda_boundary: float = 1.0
     scheduler_step: int = 10000
     scheduler_gamma: float = 0.5
+    max_grad_norm: float = 1.0
     batch_size: int = int(2**14)
     log_every: int = 1000
     checkpoint_every: int = 1000
@@ -66,6 +67,7 @@ class TrainingConfig:
         assert self.scheduler_gamma > 0 and self.scheduler_gamma < 1, (
             "scheduler_gamma must be in (0,1)"
         )
+        assert self.max_grad_norm > 0, "max_grad_norm must be > 0"
         assert self.batch_size > 0, "batch_size must be > 0"
         assert self.log_every > 0, "log_every must be > 0"
         assert self.checkpoint_every > 0, "checkpoint_every must be > 0"
@@ -195,7 +197,7 @@ def main(config: TrainingConfig):
 
         total_loss.backward()
         # Gradient clipping to stabilize training
-        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=config.max_grad_norm)
         optimizer.step()
         scheduler.step()
 
