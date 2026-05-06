@@ -108,15 +108,16 @@ uv run train.py --help
 | Parameter | Default | Description |
 |-----------|---------|-------------|
 | `hidden_layers` | 4 | Number of hidden layers |
-| `hidden_units` | 64 | Neurons per hidden layer |
+| `hidden_units` | 128 | Neurons per hidden layer |
+| `activation` | `tanh` | Activation function (`tanh`, `silu`, `gelu`, `softplus`, `mish`) |
 | `learning_rate` | 1e-3 | Adam learning rate |
-| `epochs` | 50000 | Maximum training epochs |
-| `batch_size` | 2048 | Collocation points per epoch |
+| `epochs` | 100000 | Maximum training epochs |
+| `batch_size` | 16384 | Collocation points per epoch |
 | `lambda_physics` | 1.0 | PDE loss weight |
-| `lambda_boundary` | 10.0 | Boundary loss weight |
-| `scheduler_step` | 5000 | LR decay step |
+| `lambda_boundary` | 1.0 | Boundary loss weight |
+| `scheduler_step` | 10000 | LR decay step |
 | `scheduler_gamma` | 0.5 | LR decay factor |
-| `patience` | 2000 | Early stopping patience |
+| `patience` | 10 | Early stopping patience |
 | `checkpoint_every` | 1000 | Checkpoint frequency (epochs) |
 | `resume` | `""` | Path to checkpoint for resuming |
 
