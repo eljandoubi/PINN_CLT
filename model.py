@@ -41,30 +41,96 @@ def zero_loss(criterion: nn.Module, input: torch.Tensor) -> torch.Tensor:
         return criterion(input, input.new_zeros(1).expand_as(input))
 
 
-class PINN(nn.Module):
-    """Physics-Informed Neural Network for orthotropic plate bending (CLT)."""
+class ResidualBlock(nn.Module):
+    """A simple MLP-style residual block: x -> Linear -> Act -> Linear -> +x
 
-    def __init__(self, hidden_layers=4, hidden_units=64, activation=nn.Tanh):
+    If the input and output dimensions differ, a linear projection is applied
+    to the shortcut path.
+    """
+
+    def __init__(self, in_features, out_features, activation=nn.Tanh, use_norm=False):
+        super().__init__()
+        self.fc1 = nn.Linear(in_features, out_features)
+        self.act = activation()
+        self.fc2 = nn.Linear(out_features, out_features)
+
+        self.use_norm = use_norm
+        if use_norm:
+            # LayerNorm is friendly for small batches common in PINNs
+            self.norm1 = nn.LayerNorm(out_features)
+            self.norm2 = nn.LayerNorm(out_features)
+
+        if in_features != out_features:
+            self.shortcut = nn.Linear(in_features, out_features)
+        else:
+            self.shortcut = None
+
+    def forward(self, x):
+        identity = x
+        out = self.fc1(x)
+        if self.use_norm:
+            out = self.norm1(out)
+        out = self.act(out)
+        out = self.fc2(out)
+        if self.use_norm:
+            out = self.norm2(out)
+        if self.shortcut is not None:
+            identity = self.shortcut(identity)
+        return self.act(out + identity)
+
+
+class PINN(nn.Module):
+    """Physics-Informed Neural Network for orthotropic plate bending (CLT).
+
+    Options:
+    - `use_residual`: when True, builds the hidden layers as `ResidualBlock`s.
+    - `use_norm`: applies `LayerNorm` inside residual blocks (recommended
+      for small batches).
+    """
+
+    def __init__(
+        self,
+        hidden_layers=4,
+        hidden_units=64,
+        activation=nn.Tanh,
+        use_residual: bool = False,
+        use_norm: bool = False,
+    ):
         super().__init__()
         layers = []
-        # Input: (x, y) -> 2 features
         in_features = 2
-        for _ in range(hidden_layers):
+
+        if use_residual:
+            # Initial projection to hidden_units
             layers.append(nn.Linear(in_features, hidden_units))
             layers.append(activation())
             in_features = hidden_units
-        # Output: w (transverse displacement) -> 1 feature
-        layers.append(nn.Linear(in_features, 1))
+            # Stack residual blocks
+            for _ in range(hidden_layers):
+                layers.append(
+                    ResidualBlock(in_features, hidden_units, activation, use_norm)
+                )
+            # Final projection to output
+            layers.append(nn.Linear(hidden_units, 1))
+        else:
+            for _ in range(hidden_layers):
+                layers.append(nn.Linear(in_features, hidden_units))
+                layers.append(activation())
+                in_features = hidden_units
+            layers.append(nn.Linear(in_features, 1))
+
+        # Use Sequential to keep backward compatibility
         self.net = nn.Sequential(*layers)
 
-        # Xavier initialization
+        # Initialize weights for all Linear modules
         self._initialize_weights()
 
     def _initialize_weights(self):
-        for m in self.net:
+        for m in self.modules():
             if isinstance(m, nn.Linear):
                 nn.init.xavier_normal_(m.weight)
-                nn.init.zeros_(m.bias)
+                if m.bias is not None:
+                    nn.init.zeros_(m.bias)
 
     def forward(self, xy):
         """Forward pass: predict displacement w given (x, y) coordinates."""

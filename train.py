@@ -46,7 +46,7 @@ class TrainingConfig:
     scheduler_step: int = 10000
     scheduler_gamma: float = 0.5
     max_grad_norm: float = 1.0
-    batch_size: int = int(2**14)
+    batch_size: int = int(2**12)
     log_every: int = 1000
     checkpoint_every: int = 1000
     runs_dir: str | Path = "runs"
@@ -54,6 +54,8 @@ class TrainingConfig:
     plot_dir: Path = Path("plots")
     resume: str = ""  # Path to checkpoint to resume from
     patience: int = 10  # Early stopping patience
+    use_residual: bool = False  # Use ResNet-like residual blocks
+    use_norm: bool = False  # Apply LayerNorm inside residual blocks
     run_id: str | None = None  # Optional run ID for logging (overrides auto-generated)
 
     def __post_init__(self):
@@ -148,6 +150,8 @@ def main(config: TrainingConfig):
         hidden_layers=config.hidden_layers,
         hidden_units=config.hidden_units,
         activation=activation_map[config.activation],
+        use_residual=config.use_residual,
+        use_norm=config.use_norm,
     ).to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=config.learning_rate)
