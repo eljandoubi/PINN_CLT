@@ -18,7 +18,13 @@ from data import (
     material_props,
 )
 from early_stopping import EarlyStopping
-from model import PINN, ReverseHuberLoss, compute_boundary_loss, compute_pde_residual
+from model import (
+    PINN,
+    ReverseHuberLoss,
+    compute_boundary_loss,
+    compute_pde_residual,
+    zero_loss,
+)
 from plotting import plot_displacement_3d
 from video import make_video
 
@@ -184,7 +190,7 @@ def main(config: TrainingConfig):
             dim=1,
         )
         residual = compute_pde_residual(model, xy_batch, material_props)
-        loss_physics = criterion(residual, torch.zeros_like(residual))
+        loss_physics = zero_loss(criterion, residual)
 
         # Boundary loss
         loss_boundary = compute_boundary_loss(model, boundary_data, criterion)

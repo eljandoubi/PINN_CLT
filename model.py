@@ -23,6 +23,24 @@ class ReverseHuberLoss(nn.Module):
         return loss
 
 
+def zero_loss(criterion: nn.Module, input: torch.Tensor) -> torch.Tensor:
+    """Compute criterion(input, 0) without allocating a zero tensor.
+
+    For standard losses against a zero target, this avoids the memory
+    overhead of torch.zeros_like(input) by computing directly:
+      MSE -> mean(input²)
+      L1  -> mean(|input|)
+      Huber/ReverseHuber -> use scalar zero broadcast
+    """
+    if isinstance(criterion, nn.MSELoss):
+        return input.pow(2).mean()
+    elif isinstance(criterion, nn.L1Loss):
+        return input.abs().mean()
+    else:
+        # Huber, ReverseHuber, etc.: use scalar zero (no allocation)
+        return criterion(input, input.new_zeros(1).expand_as(input))
+
+
 class PINN(nn.Module):
     """Physics-Informed Neural Network for orthotropic plate bending (CLT)."""
 
@@ -144,7 +162,7 @@ def compute_boundary_loss(model, boundary_data, criterion=None):
     dw_dx = torch.autograd.grad(
         w_pred, xy_fixed, grad_outputs=torch.ones_like(w_pred), create_graph=True
     )[0][:, 0:1]
-    loss_slope_fixed = criterion(dw_dx, torch.zeros_like(dw_dx))
+    loss_slope_fixed = zero_loss(criterion, dw_dx)
 
     # Simply supported: w = 0
     xy_ss = boundary_data["simply_supported"]["xy"]
