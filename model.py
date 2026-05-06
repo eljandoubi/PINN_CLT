@@ -2,6 +2,30 @@ import torch
 import torch.nn as nn
 
 
+class ReverseHuberLoss(nn.Module):
+    """Reverse Huber loss: L1 for |error| <= delta, MSE for |error| > delta."""
+
+    def __init__(self, delta: float = 1.0, reduction: str = "mean"):
+        super().__init__()
+        self.delta = delta
+        self.mse = nn.MSELoss(reduction="none")
+        self.l1 = nn.L1Loss(reduction="none")
+        self.reduction = reduction
+
+    def forward(self, input: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+        abs_error = torch.abs(input - target)
+        loss = torch.where(
+            abs_error > self.delta,
+            self.mse(input, target),
+            self.l1(input, target),
+        )
+        if self.reduction == "mean":
+            return loss.mean()
+        elif self.reduction == "sum":
+            return loss.sum()
+        return loss
+
+
 class PINN(nn.Module):
     """Physics-Informed Neural Network for orthotropic plate bending (CLT)."""
 
@@ -96,31 +120,39 @@ def compute_pde_residual(model, xy, material_props, normalize=False):
     return residual
 
 
-def compute_boundary_loss(model, boundary_data):
+def compute_boundary_loss(model, boundary_data, criterion=None):
     """
     Compute boundary condition losses:
     - Fixed edge (x=0): w=0, dw/dx=0
     - Simply supported edge (x=L): w=0
 
+    Args:
+        model: PINN model
+        boundary_data: dict with boundary condition data
+        criterion: loss function (default: MSELoss)
+
     Returns:
         Total boundary loss (scalar)
     """
+    if criterion is None:
+        criterion = torch.nn.MSELoss()
+
     # Fixed edge: w = 0
     xy_fixed = boundary_data["fixed_edge"]["xy"].requires_grad_(True)
     w_pred = model(xy_fixed)
     w_target = boundary_data["fixed_edge"]["w"]
-    loss_w_fixed = torch.mean((w_pred - w_target) ** 2)
+    loss_w_fixed = criterion(w_pred, w_target)
 
     # Fixed edge: dw/dx = 0
     dw_dx = torch.autograd.grad(
         w_pred, xy_fixed, grad_outputs=torch.ones_like(w_pred), create_graph=True
     )[0][:, 0:1]
-    loss_slope_fixed = torch.mean(dw_dx**2)
+    loss_slope_fixed = criterion(dw_dx, torch.zeros_like(dw_dx))
 
     # Simply supported: w = 0
     xy_ss = boundary_data["simply_supported"]["xy"]
     w_pred_ss = model(xy_ss)
     w_target_ss = boundary_data["simply_supported"]["w"]
-    loss_w_ss = torch.mean((w_pred_ss - w_target_ss) ** 2)
+    loss_w_ss = criterion(w_pred_ss, w_target_ss)
 
     return loss_w_fixed + loss_slope_fixed + loss_w_ss

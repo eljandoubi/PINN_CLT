@@ -18,7 +18,7 @@ from data import (
     material_props,
 )
 from early_stopping import EarlyStopping
-from model import PINN, compute_boundary_loss, compute_pde_residual
+from model import PINN, ReverseHuberLoss, compute_boundary_loss, compute_pde_residual
 from plotting import plot_displacement_3d
 from video import make_video
 
@@ -32,6 +32,7 @@ class TrainingConfig:
     hidden_layers: int = 4
     hidden_units: int = 128
     activation: Literal["tanh", "silu", "gelu", "softplus", "mish"] = "tanh"
+    loss_fn: Literal["mse", "huber", "reverse_huber", "l1"] = "mse"
     learning_rate: float = 1e-3
     epochs: int = 100000
     lambda_physics: float = 1.0
@@ -53,6 +54,9 @@ class TrainingConfig:
         assert self.hidden_units > 0, "hidden_units must be > 0"
         assert self.activation in ("tanh", "silu", "gelu", "softplus", "mish"), (
             f"activation must be one of tanh, silu, gelu, softplus, mish; got {self.activation}"
+        )
+        assert self.loss_fn in ("mse", "huber", "reverse_huber", "l1"), (
+            f"loss_fn must be one of mse, huber, reverse_huber, l1; got {self.loss_fn}"
         )
         assert self.learning_rate > 0, "learning_rate must be > 0"
         assert self.epochs > 0, "epochs must be > 0"
@@ -125,6 +129,13 @@ def main(config: TrainingConfig):
         "softplus": nn.Softplus,
         "mish": nn.Mish,
     }
+    loss_fn_map = {
+        "mse": nn.MSELoss(),
+        "huber": nn.HuberLoss(),
+        "reverse_huber": ReverseHuberLoss(),
+        "l1": nn.L1Loss(),
+    }
+    criterion = loss_fn_map[config.loss_fn]
     model = PINN(
         hidden_layers=config.hidden_layers,
         hidden_units=config.hidden_units,
@@ -171,10 +182,10 @@ def main(config: TrainingConfig):
             dim=1,
         )
         residual = compute_pde_residual(model, xy_batch, material_props)
-        loss_physics = torch.mean(residual**2)
+        loss_physics = criterion(residual, torch.zeros_like(residual))
 
         # Boundary loss
-        loss_boundary = compute_boundary_loss(model, boundary_data)
+        loss_boundary = compute_boundary_loss(model, boundary_data, criterion)
 
         # Total loss
         total_loss = (

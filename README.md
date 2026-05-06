@@ -110,6 +110,7 @@ uv run train.py --help
 | `hidden_layers` | 4 | Number of hidden layers |
 | `hidden_units` | 128 | Neurons per hidden layer |
 | `activation` | `tanh` | Activation function (`tanh`, `silu`, `gelu`, `softplus`, `mish`) |
+| `loss_fn` | `mse` | Loss function (`mse`, `huber`, `reverse_huber`, `l1`) |
 | `learning_rate` | 1e-3 | Adam learning rate |
 | `epochs` | 100000 | Maximum training epochs |
 | `batch_size` | 16384 | Collocation points per epoch |
