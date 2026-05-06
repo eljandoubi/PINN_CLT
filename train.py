@@ -1,12 +1,14 @@
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
 
 import torch
+import torch.nn as nn
+import wandb
 from dotenv import load_dotenv
 from simple_parsing import ArgumentParser
 from tqdm import trange
 
-import wandb
 from checkpoint import load_checkpoint, save_checkpoint
 from data import (
     PLATE_LENGTH,
@@ -29,6 +31,7 @@ class TrainingConfig:
 
     hidden_layers: int = 4
     hidden_units: int = 128
+    activation: Literal["tanh", "silu", "gelu", "softplus", "mish"] = "tanh"
     learning_rate: float = 1e-3
     epochs: int = 100000
     lambda_physics: float = 1.0
@@ -48,6 +51,9 @@ class TrainingConfig:
     def __post_init__(self):
         assert self.hidden_layers > 0, "hidden_layers must be > 0"
         assert self.hidden_units > 0, "hidden_units must be > 0"
+        assert self.activation in ("tanh", "silu", "gelu", "softplus", "mish"), (
+            f"activation must be one of tanh, silu, gelu, softplus, mish; got {self.activation}"
+        )
         assert self.learning_rate > 0, "learning_rate must be > 0"
         assert self.epochs > 0, "epochs must be > 0"
         assert self.lambda_physics >= 0, "lambda_physics must be >= 0"
@@ -112,9 +118,17 @@ def main(config: TrainingConfig):
     )
 
     # --- MODEL SETUP ---
+    activation_map = {
+        "tanh": nn.Tanh,
+        "silu": nn.SiLU,
+        "gelu": nn.GELU,
+        "softplus": nn.Softplus,
+        "mish": nn.Mish,
+    }
     model = PINN(
         hidden_layers=config.hidden_layers,
         hidden_units=config.hidden_units,
+        activation=activation_map[config.activation],
     ).to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=config.learning_rate)
