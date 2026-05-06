@@ -112,6 +112,7 @@ uv run train.py --help
 | `activation` | `tanh` | Activation function (`tanh`, `silu`, `gelu`, `softplus`, `mish`) |
 | `loss_fn` | `mse` | Loss function (`mse`, `huber`, `reverse_huber`, `l1`) |
 | `learning_rate` | 1e-3 | Adam learning rate |
+| `max_grad_norm` | 1.0 | Maximum gradient norm for clipping |
 | `epochs` | 100000 | Maximum training epochs |
 | `batch_size` | 16384 | Collocation points per epoch |
 | `lambda_physics` | 1.0 | PDE loss weight |

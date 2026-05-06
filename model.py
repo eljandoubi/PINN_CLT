@@ -13,12 +13,9 @@ class ReverseHuberLoss(nn.Module):
         self.reduction = reduction
 
     def forward(self, input: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
-        abs_error = torch.abs(input - target)
-        loss = torch.where(
-            abs_error > self.delta,
-            self.mse(input, target),
-            self.l1(input, target),
-        )
+        l1 = self.l1(input, target)
+        mse = self.mse(input, target)
+        loss = torch.where(l1 > self.delta, mse, l1)
         if self.reduction == "mean":
             return loss.mean()
         elif self.reduction == "sum":
