@@ -120,6 +120,8 @@ uv run train.py --help
 | `scheduler_step` | 10000 | LR decay step |
 | `scheduler_gamma` | 0.5 | LR decay factor |
 | `patience` | 10 | Early stopping patience |
+| `use_residual` | `False` | Use ResNet-like residual blocks in the MLP |
+| `use_norm` | `False` | Apply LayerNorm inside residual blocks |
 | `checkpoint_every` | 1000 | Checkpoint frequency (epochs) |
 | `resume` | `""` | Path to checkpoint for resuming |
 
