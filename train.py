@@ -2,11 +2,11 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import torch
+import wandb
 from dotenv import load_dotenv
 from simple_parsing import ArgumentParser
 from tqdm import trange
 
-import wandb
 from checkpoint import load_checkpoint, save_checkpoint
 from data import (
     PLATE_LENGTH,
@@ -28,10 +28,10 @@ class TrainingConfig:
     """PINN training configuration."""
 
     hidden_layers: int = 4
-    hidden_units: int = 64
+    hidden_units: int = 128
     learning_rate: float = 1e-3
     epochs: int = 100000
-    lambda_physics: float = 1e-3
+    lambda_physics: float = 1.0
     lambda_boundary: float = 1.0
     scheduler_step: int = 10000
     scheduler_gamma: float = 0.5
