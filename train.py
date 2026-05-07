@@ -214,6 +214,8 @@ def main(config: TrainingConfig):
 
     print(f"Model parameters: {sum(p.numel() for p in model.parameters())}")
     wandb.watch(model, log="all", log_freq=500)
+    if adaptive_weighter is not None:
+        wandb.watch(adaptive_weighter, log="all", log_freq=500)
 
     # --- EARLY STOPPING ---
     early_stop = EarlyStopping(patience=config.patience)
@@ -260,7 +262,7 @@ def main(config: TrainingConfig):
         total_loss.backward()
         # Gradient clipping to stabilize training
         torch.nn.utils.clip_grad_norm_(
-            model.parameters(), max_norm=config.max_grad_norm
+            params, max_norm=config.max_grad_norm
         )
         optimizer.step()
         scheduler.step()
