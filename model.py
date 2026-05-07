@@ -230,7 +230,10 @@ def compute_boundary_loss(model, boundary_data, criterion=None):
         criterion = torch.nn.MSELoss()
 
     # Fixed edge: w = 0
-    xy_fixed = boundary_data["fixed_edge"]["xy"].requires_grad_(True)
+    xy_fixed = boundary_data["fixed_edge"]["xy"]
+    if not xy_fixed.requires_grad:
+        xy_fixed = xy_fixed.requires_grad_(True)
+
     w_pred = model(xy_fixed)
     w_target = boundary_data["fixed_edge"]["w"]
     loss_w_fixed = criterion(w_pred, w_target)
@@ -276,10 +279,12 @@ def compute_natural_bc_loss(model, boundary_data, material_props, criterion=None
     D66 = material_props["D66"]
 
     # --- Simply Supported Edge (x=L): Mx = 0 ---
-    xy_ss = boundary_data["simply_supported"]["xy"].requires_grad_(True)
-    x_ss = xy_ss[:, 0:1].requires_grad_(True)
-    y_ss = xy_ss[:, 1:2].requires_grad_(True)
-    xy_ss_input = torch.cat([x_ss, y_ss], dim=1)
+    xy_ss = boundary_data["simply_supported"]["xy"]
+    if not xy_ss.requires_grad:
+        xy_ss = xy_ss.requires_grad_(True)
+    x_ss = xy_ss[:, 0:1]
+    y_ss = xy_ss[:, 1:2]
+    xy_ss_input = xy_ss
 
     w_ss = model(xy_ss_input)
     ones = torch.ones_like(w_ss)
@@ -302,10 +307,12 @@ def compute_natural_bc_loss(model, boundary_data, material_props, criterion=None
     total_loss = loss_Mx_ss
 
     # --- Free Edge y=0: My = 0, Vy = 0 ---
-    xy_y0 = boundary_data["free_edge_y0"]["xy"].requires_grad_(True)
-    x_y0 = xy_y0[:, 0:1].requires_grad_(True)
-    y_y0 = xy_y0[:, 1:2].requires_grad_(True)
-    xy_y0_input = torch.cat([x_y0, y_y0], dim=1)
+    xy_y0 = boundary_data["free_edge_y0"]["xy"]
+    if not xy_y0.requires_grad:
+        xy_y0 = xy_y0.requires_grad_(True)
+    x_y0 = xy_y0[:, 0:1]
+    y_y0 = xy_y0[:, 1:2]
+    xy_y0_input = xy_y0
 
     w_y0 = model(xy_y0_input)
     ones_y0 = torch.ones_like(w_y0)
@@ -345,10 +352,12 @@ def compute_natural_bc_loss(model, boundary_data, material_props, criterion=None
     total_loss = total_loss + loss_Vy_y0
 
     # --- Free Edge y=W: My = 0, Vy = 0 ---
-    xy_yW = boundary_data["free_edge_yW"]["xy"].requires_grad_(True)
-    x_yW = xy_yW[:, 0:1].requires_grad_(True)
-    y_yW = xy_yW[:, 1:2].requires_grad_(True)
-    xy_yW_input = torch.cat([x_yW, y_yW], dim=1)
+    xy_yW = boundary_data["free_edge_yW"]["xy"]
+    if not xy_yW.requires_grad:
+        xy_yW = xy_yW.requires_grad_(True)
+    x_yW = xy_yW[:, 0:1]
+    y_yW = xy_yW[:, 1:2]
+    xy_yW_input = xy_yW
 
     w_yW = model(xy_yW_input)
     ones_yW = torch.ones_like(w_yW)
