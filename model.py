@@ -110,14 +110,15 @@ class PINN(nn.Module):
                 layers.append(
                     ResidualBlock(in_features, hidden_units, activation, use_norm)
                 )
-            # Final projection to output
-            layers.append(nn.Linear(hidden_units, 1))
+
         else:
             for _ in range(hidden_layers):
                 layers.append(nn.Linear(in_features, hidden_units))
                 layers.append(activation())
                 in_features = hidden_units
-            layers.append(nn.Linear(in_features, 1))
+
+        # Final projection to output
+        layers.append(nn.Linear(hidden_units, 1))
 
         # Use Sequential to keep backward compatibility
         self.net = nn.Sequential(*layers)

@@ -286,6 +286,11 @@ def main(config: TrainingConfig):
     make_video(plot_dir=config.plot_dir, output_path=video_path)
     wandb.log({"video": wandb.Video(str(video_path))}, step=epoch)
 
+    # --- UPLOAD CHECKPOINTS TO WANDB ---
+    artifact = wandb.Artifact(f"model-{run.id}", type="model", description="Model checkpoints")
+    artifact.add_dir(str(config.checkpoint_dir))
+    run.log_artifact(artifact)
+
     wandb.finish()
     print("Training complete.")
 
