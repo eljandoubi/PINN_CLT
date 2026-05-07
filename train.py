@@ -20,6 +20,7 @@ from data import (
 from early_stopping import EarlyStopping
 from model import (
     PINN,
+    AdaptiveLossWeights,
     ReverseHuberLoss,
     compute_boundary_loss,
     compute_natural_bc_loss,
@@ -72,6 +73,7 @@ class TrainingConfig:
     patience: int = 10  # Early stopping patience
     use_residual: bool = False  # Use ResNet-like residual blocks
     use_norm: bool = False  # Apply LayerNorm inside residual blocks
+    adaptive_weights: bool = False  # Use learnable adaptive loss weighting
     run_id: str | None = None  # Optional run ID for logging (overrides auto-generated)
 
     def __post_init__(self):
@@ -171,7 +173,29 @@ def main(config: TrainingConfig):
         use_norm=config.use_norm,
     ).to(device)
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=config.learning_rate)
+    # --- ADAPTIVE LOSS WEIGHTING ---
+    adaptive_weighter = (
+        AdaptiveLossWeights(
+            num_losses=3,
+            initial_weights=[
+                config.lambda_physics,
+                config.lambda_boundary,
+                config.lambda_natural,
+            ],
+        ).to(device)
+        if config.adaptive_weights
+        else None
+    )
+    eff_weights = [
+        config.lambda_physics,
+        config.lambda_boundary,
+        config.lambda_natural,
+    ]
+    params = list(model.parameters())
+    if adaptive_weighter is not None:
+        params += list(adaptive_weighter.parameters())
+    optimizer = torch.optim.Adam(params, lr=config.learning_rate)
+
     scheduler = torch.optim.lr_scheduler.StepLR(
         optimizer,
         step_size=config.scheduler_step,
@@ -221,12 +245,17 @@ def main(config: TrainingConfig):
             model, boundary_data, material_props, criterion
         )
 
-        # Total loss
-        total_loss = (
-            config.lambda_physics * loss_physics
-            + config.lambda_boundary * loss_boundary
-            + config.lambda_natural * loss_natural
-        )
+        # Total loss (adaptive or manual weighting)
+        if adaptive_weighter is not None:
+            total_loss, eff_weights = adaptive_weighter(
+                loss_physics, loss_boundary, loss_natural
+            )
+        else:
+            total_loss = (
+                config.lambda_physics * loss_physics
+                + config.lambda_boundary * loss_boundary
+                + config.lambda_natural * loss_natural
+            )
 
         total_loss.backward()
         # Gradient clipping to stabilize training
@@ -243,17 +272,22 @@ def main(config: TrainingConfig):
         # Logging
         if epoch % config.log_every == 0:
             avg_loss = loss_accumulator / loss_count
-            wandb.log(
-                {
-                    "loss/total": current_loss,
-                    "loss/avg": avg_loss,
-                    "loss/physics": loss_physics.item(),
-                    "loss/boundary": loss_boundary.item(),
-                    "loss/natural": loss_natural.item(),
-                    "lr": optimizer.param_groups[0]["lr"],
-                },
-                step=epoch,
-            )
+            log_dict = {
+                "loss/total": current_loss,
+                "loss/avg": avg_loss,
+                "loss/physics": loss_physics.item(),
+                "loss/boundary": loss_boundary.item(),
+                "loss/natural": loss_natural.item(),
+                "loss/ratio_phys_bc": loss_physics.item()
+                / (loss_boundary.item() + 1e-12),
+                "loss/ratio_phys_nat": loss_physics.item()
+                / (loss_natural.item() + 1e-12),
+                "weights/physics": eff_weights[0],
+                "weights/boundary": eff_weights[1],
+                "weights/natural": eff_weights[2],
+                "lr": optimizer.param_groups[0]["lr"],
+            }
+            wandb.log(log_dict, step=epoch)
             pbar.set_postfix(
                 avg=f"{avg_loss:.2e}",
                 phys=f"{loss_physics.item():.2e}",
