@@ -2,7 +2,6 @@ import torch
 
 # --- DEVICE CONFIGURATION ---
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print(f"Using device: {device}")
 
 # --- 1. DEFINE THE PHYSICAL & GEOMETRIC PARAMETERS ---
 
@@ -32,12 +31,6 @@ D11 = Q11 * THICKNESS**3 / 12
 D22 = Q22 * THICKNESS**3 / 12
 D12 = Q12 * THICKNESS**3 / 12
 D66 = Q66 * THICKNESS**3 / 12
-
-print("\n--- Orthotropic Bending Stiffnesses ---")
-print(f"D11 = {D11:.4f} N·m")
-print(f"D22 = {D22:.4f} N·m")
-print(f"D12 = {D12:.4f} N·m")
-print(f"D66 = {D66:.4f} N·m")
 
 # Load Conditions
 PRESSURE = 10000.0  # Uniform transverse pressure (Pa)
@@ -89,16 +82,3 @@ material_props = {
     "D66": D66,
     "pressure": PRESSURE,
 }
-
-# --- 4. SUMMARY ---
-
-print(f"\n--- Data Summary (device: {device}) ---")
-print(f"Fixed edge points: {boundary_data['fixed_edge']['xy'].shape}")
-print(f"Simply supported points: {boundary_data['simply_supported']['xy'].shape}")
-print(f"Free edge y=0 points: {boundary_data['free_edge_y0']['xy'].shape}")
-print(f"Free edge y=W points: {boundary_data['free_edge_yW']['xy'].shape}")
-print("\nGoverning PDE (orthotropic plate):")
-print("  D11·∂⁴w/∂x⁴ + 2(D12+2D66)·∂⁴w/∂x²∂y² + D22·∂⁴w/∂y⁴ = q")
-print("\nNatural BCs:")
-print("  Simply supported (x=L): Mx = 0")
-print("  Free edges (y=0, y=W): My = 0, Vy = 0")

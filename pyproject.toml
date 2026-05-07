@@ -1,7 +1,7 @@
 [project]
 name = "pinn-clt"
 version = "0.1.0"
-description = "Add your description here"
+description = "Physics-Informed Neural Network for Classical Lamination Theory (orthotropic plate bending)"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
