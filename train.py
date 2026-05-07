@@ -203,7 +203,9 @@ def main(config: TrainingConfig):
         loss_boundary = compute_boundary_loss(model, boundary_data, criterion)
 
         # Natural boundary conditions loss
-        loss_natural = compute_natural_bc_loss(model, boundary_data, material_props, criterion)
+        loss_natural = compute_natural_bc_loss(
+            model, boundary_data, material_props, criterion
+        )
 
         # Total loss
         total_loss = (
