@@ -23,6 +23,42 @@ class ReverseHuberLoss(nn.Module):
         return loss
 
 
+class AdaptiveLossWeights(nn.Module):
+    """Learnable loss weights via homoscedastic uncertainty (Kendall et al., 2018).
+
+    Each task loss is weighted as: weighted_loss = exp(-log_var) * loss + log_var
+    This automatically balances losses of different magnitudes during training.
+    """
+
+    def __init__(self, num_losses: int = 3, initial_weights: list[float] | None = None):
+        super().__init__()
+        if initial_weights is not None:
+            # log_var = -log(weight) so that exp(-log_var) = weight
+            init_vals = torch.tensor(
+                [-torch.tensor(w).log().item() for w in initial_weights]
+            )
+        else:
+            init_vals = torch.zeros(num_losses)
+        self.log_vars = nn.Parameter(init_vals)
+
+    def forward(self, *losses: torch.Tensor) -> tuple[torch.Tensor, list[float]]:
+        """Compute adaptively weighted total loss.
+
+        Args:
+            *losses: individual loss tensors (physics, boundary, natural)
+
+        Returns:
+            (total_weighted_loss, list of effective weights)
+        """
+        total = torch.tensor(0.0, device=losses[0].device, dtype=losses[0].dtype)
+        weights = []
+        for i, loss in enumerate(losses):
+            precision = torch.exp(-self.log_vars[i])
+            total = total + precision * loss + self.log_vars[i]
+            weights.append(precision.item())
+        return total, weights
+
+
 def zero_loss(criterion: nn.Module, input: torch.Tensor) -> torch.Tensor:
     """Compute criterion(input, 0) without allocating a zero tensor.
 
