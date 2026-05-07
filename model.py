@@ -33,9 +33,19 @@ def zero_loss(criterion: nn.Module, input: torch.Tensor) -> torch.Tensor:
       Huber/ReverseHuber -> use scalar zero broadcast
     """
     if isinstance(criterion, nn.MSELoss):
-        return input.pow(2).mean()
+        sq = input.pow(2)
+        if criterion.reduction == "mean":
+            return sq.mean()
+        elif criterion.reduction == "sum":
+            return sq.sum()
+        return sq
     elif isinstance(criterion, nn.L1Loss):
-        return input.abs().mean()
+        ab = input.abs()
+        if criterion.reduction == "mean":
+            return ab.mean()
+        elif criterion.reduction == "sum":
+            return ab.sum()
+        return ab
     else:
         # Huber, ReverseHuber, etc.: use scalar zero (no allocation)
         return criterion(input, input.new_zeros(1).expand_as(input))
@@ -265,8 +275,6 @@ def compute_natural_bc_loss(model, boundary_data, material_props, criterion=None
     D12 = material_props["D12"]
     D66 = material_props["D66"]
 
-    total_loss = torch.tensor(0.0, device=next(model.parameters()).device)
-
     # --- Simply Supported Edge (x=L): Mx = 0 ---
     xy_ss = boundary_data["simply_supported"]["xy"].requires_grad_(True)
     x_ss = xy_ss[:, 0:1].requires_grad_(True)
@@ -291,7 +299,7 @@ def compute_natural_bc_loss(model, boundary_data, material_props, criterion=None
     # Bending moment Mx at x=L
     Mx_ss = -(D11 * d2w_dx2_ss + D12 * d2w_dy2_ss)
     loss_Mx_ss = zero_loss(criterion, Mx_ss)
-    total_loss = total_loss + loss_Mx_ss
+    total_loss = loss_Mx_ss
 
     # --- Free Edge y=0: My = 0, Vy = 0 ---
     xy_y0 = boundary_data["free_edge_y0"]["xy"].requires_grad_(True)
