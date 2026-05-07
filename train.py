@@ -261,9 +261,7 @@ def main(config: TrainingConfig):
 
         total_loss.backward()
         # Gradient clipping to stabilize training
-        torch.nn.utils.clip_grad_norm_(
-            params, max_norm=config.max_grad_norm
-        )
+        torch.nn.utils.clip_grad_norm_(params, max_norm=config.max_grad_norm)
         optimizer.step()
         scheduler.step()
 
