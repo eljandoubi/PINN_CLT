@@ -11,6 +11,7 @@ D11·∂⁴w/∂x⁴ + 2(D12 + 2·D66)·∂⁴w/∂x²∂y² + D22·∂⁴w/∂y
 
 - **Orthotropic material model** — T300/5208 carbon fiber with full [Q] and [D] stiffness matrices
 - **Residual blocks** — optional ResNet-style MLP with LayerNorm for stable training
+- **Adaptive loss weighting** — learnable task weights via homoscedastic uncertainty (Kendall et al., 2018)
 - **Multiple loss functions** — MSE, Huber, Reverse Huber, and L1
 - **Automatic differentiation** — 4th-order derivatives computed via PyTorch autograd
 - **Mini-batch collocation** — fresh random domain points resampled each epoch
@@ -91,6 +92,12 @@ uv run train.py --epochs 50000 --learning_rate 5e-4 --batch_size 4096 --patience
 uv run train.py --use_residual true --use_norm true --hidden_layers 6 --hidden_units 128
 ```
 
+### With adaptive loss weighting
+
+```bash
+uv run train.py --adaptive_weights true --lambda_physics 10.0 --lambda_boundary 1.0 --lambda_natural 1.0
+```
+
 ### Resume from checkpoint
 
 ```bash
@@ -131,8 +138,9 @@ uv run train.py --help
 | `checkpoint_every` | 1000 | Checkpoint & plot frequency (epochs) |
 | `use_residual` | `false` | Use ResNet-like residual blocks |
 | `use_norm` | `false` | Apply LayerNorm inside residual blocks |
+| `adaptive_weights` | `false` | Learnable adaptive loss weighting (Kendall et al.) |
 | `runs_dir` | `runs` | Base directory for all run outputs |
-| `run_id` | auto | W&B run ID (auto-generated if omitted) |
+| `run_id` | `None` | W&B run ID (auto-generated if omitted) |
 | `resume` | `""` | Path to checkpoint for resuming |
 
 ## Boundary Conditions
