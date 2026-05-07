@@ -207,7 +207,7 @@ def main(config: TrainingConfig):
     best_loss = float("inf")
     if config.resume:
         start_epoch, best_loss = load_checkpoint(
-            config.resume, model, optimizer, scheduler, device
+            config.resume, model, optimizer, scheduler, device, adaptive_weighter
         )
         start_epoch += 1  # Start from next epoch
         print(f"Resumed from epoch {start_epoch - 1}, best_loss={best_loss:.6e}")
@@ -312,6 +312,7 @@ def main(config: TrainingConfig):
                         scheduler,
                         epoch,
                         best_loss,
+                        adaptive_weighter,
                     )
                 save_checkpoint(
                     config.checkpoint_dir / f"ckpt_epoch_{epoch:06d}.pt",
@@ -320,6 +321,7 @@ def main(config: TrainingConfig):
                     scheduler,
                     epoch,
                     best_loss,
+                    adaptive_weighter,
                 )
                 # Plot 3D displacement
                 fig_path = plot_displacement_3d(model, epoch, save_dir=config.plot_dir)
@@ -337,6 +339,7 @@ def main(config: TrainingConfig):
         scheduler,
         epoch,
         best_loss,
+        adaptive_weighter,
     )
     plot_displacement_3d(model, epoch, save_dir=config.plot_dir)
 
