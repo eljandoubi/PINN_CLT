@@ -266,9 +266,9 @@ def compute_boundary_loss(model, boundary_data, criterion=None):
         criterion = torch.nn.MSELoss()
 
     # Fixed edge: w = 0
-    xy_fixed = boundary_data["fixed_edge"]["xy"]
-    if not xy_fixed.requires_grad:
-        xy_fixed = xy_fixed.requires_grad_(True)
+    x_fixed = boundary_data["fixed_edge"]["x"].requires_grad_(True)
+    y_fixed = boundary_data["fixed_edge"]["y"].requires_grad_(True)
+    xy_fixed = torch.cat([x_fixed, y_fixed], dim=1)
 
     w_pred = model(xy_fixed)
     w_target = boundary_data["fixed_edge"]["w"]
@@ -276,8 +276,8 @@ def compute_boundary_loss(model, boundary_data, criterion=None):
 
     # Fixed edge: dw/dx = 0
     dw_dx = torch.autograd.grad(
-        w_pred, xy_fixed, grad_outputs=torch.ones_like(w_pred), create_graph=True
-    )[0][:, 0:1]
+        w_pred, x_fixed, grad_outputs=torch.ones_like(w_pred), create_graph=True
+    )[0]
     loss_slope_fixed = zero_loss(criterion, dw_dx)
 
     # Simply supported: w = 0
@@ -315,12 +315,9 @@ def compute_natural_bc_loss(model, boundary_data, material_props, criterion=None
     D66 = material_props["D66"]
 
     # --- Simply Supported Edge (x=L): Mx = 0 ---
-    xy_ss = boundary_data["simply_supported"]["xy"]
-    if not xy_ss.requires_grad:
-        xy_ss = xy_ss.requires_grad_(True)
-    x_ss = xy_ss[:, 0:1]
-    y_ss = xy_ss[:, 1:2]
-    xy_ss_input = xy_ss
+    x_ss = boundary_data["simply_supported"]["x"].requires_grad_(True)
+    y_ss = boundary_data["simply_supported"]["y"].requires_grad_(True)
+    xy_ss_input = torch.cat([x_ss, y_ss], dim=1)
 
     w_ss = model(xy_ss_input)
     ones = torch.ones_like(w_ss)
@@ -343,12 +340,9 @@ def compute_natural_bc_loss(model, boundary_data, material_props, criterion=None
     total_loss = loss_Mx_ss
 
     # --- Free Edge y=0: My = 0, Vy = 0 ---
-    xy_y0 = boundary_data["free_edge_y0"]["xy"]
-    if not xy_y0.requires_grad:
-        xy_y0 = xy_y0.requires_grad_(True)
-    x_y0 = xy_y0[:, 0:1]
-    y_y0 = xy_y0[:, 1:2]
-    xy_y0_input = xy_y0
+    x_y0 = boundary_data["free_edge_y0"]["x"].requires_grad_(True)
+    y_y0 = boundary_data["free_edge_y0"]["y"].requires_grad_(True)
+    xy_y0_input = torch.cat([x_y0, y_y0], dim=1)
 
     w_y0 = model(xy_y0_input)
     ones_y0 = torch.ones_like(w_y0)
@@ -388,12 +382,9 @@ def compute_natural_bc_loss(model, boundary_data, material_props, criterion=None
     total_loss = total_loss + loss_Vy_y0
 
     # --- Free Edge y=W: My = 0, Vy = 0 ---
-    xy_yW = boundary_data["free_edge_yW"]["xy"]
-    if not xy_yW.requires_grad:
-        xy_yW = xy_yW.requires_grad_(True)
-    x_yW = xy_yW[:, 0:1]
-    y_yW = xy_yW[:, 1:2]
-    xy_yW_input = xy_yW
+    x_yW = boundary_data["free_edge_yW"]["x"].requires_grad_(True)
+    y_yW = boundary_data["free_edge_yW"]["y"].requires_grad_(True)
+    xy_yW_input = torch.cat([x_yW, y_yW], dim=1)
 
     w_yW = model(xy_yW_input)
     ones_yW = torch.ones_like(w_yW)
