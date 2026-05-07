@@ -40,10 +40,10 @@ print(f"D22 = {material_props['D22']:.4f} N·m")
 print(f"D12 = {material_props['D12']:.4f} N·m")
 print(f"D66 = {material_props['D66']:.4f} N·m")
 print("\n--- Boundary Data Summary ---")
-print(f"Fixed edge points: {boundary_data['fixed_edge']['xy'].shape}")
+print(f"Fixed edge points: {boundary_data['fixed_edge']['x'].shape}")
 print(f"Simply supported points: {boundary_data['simply_supported']['xy'].shape}")
-print(f"Free edge y=0 points: {boundary_data['free_edge_y0']['xy'].shape}")
-print(f"Free edge y=W points: {boundary_data['free_edge_yW']['xy'].shape}")
+print(f"Free edge y=0 points: {boundary_data['free_edge_y0']['x'].shape}")
+print(f"Free edge y=W points: {boundary_data['free_edge_yW']['x'].shape}")
 print("\nGoverning PDE: D11·∂⁴w/∂x⁴ + 2(D12+2D66)·∂⁴w/∂x²∂y² + D22·∂⁴w/∂y⁴ = q")
 
 
