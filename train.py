@@ -287,7 +287,9 @@ def main(config: TrainingConfig):
     wandb.log({"video": wandb.Video(str(video_path))}, step=epoch)
 
     # --- UPLOAD CHECKPOINTS TO WANDB ---
-    artifact = wandb.Artifact(f"model-{run.id}", type="model", description="Model checkpoints")
+    artifact = wandb.Artifact(
+        f"model-{run.id}", type="model", description="Model checkpoints"
+    )
     artifact.add_dir(str(config.checkpoint_dir))
     run.log_artifact(artifact)
 
