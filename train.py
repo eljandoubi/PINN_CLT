@@ -22,6 +22,7 @@ from model import (
     PINN,
     ReverseHuberLoss,
     compute_boundary_loss,
+    compute_natural_bc_loss,
     compute_pde_residual,
     zero_loss,
 )
@@ -43,6 +44,7 @@ class TrainingConfig:
     epochs: int = 100000
     lambda_physics: float = 1.0
     lambda_boundary: float = 1.0
+    lambda_natural: float = 1.0
     scheduler_step: int = 10000
     scheduler_gamma: float = 0.5
     max_grad_norm: float = 1.0
@@ -71,6 +73,7 @@ class TrainingConfig:
         assert self.epochs > 0, "epochs must be > 0"
         assert self.lambda_physics >= 0, "lambda_physics must be >= 0"
         assert self.lambda_boundary >= 0, "lambda_boundary must be >= 0"
+        assert self.lambda_natural >= 0, "lambda_natural must be >= 0"
         assert self.scheduler_step > 0, "scheduler_step must be > 0"
         assert self.scheduler_gamma > 0 and self.scheduler_gamma < 1, (
             "scheduler_gamma must be in (0,1)"
@@ -196,13 +199,17 @@ def main(config: TrainingConfig):
         residual = compute_pde_residual(model, xy_batch, material_props)
         loss_physics = zero_loss(criterion, residual)
 
-        # Boundary loss
+        # Boundary loss (essential BCs)
         loss_boundary = compute_boundary_loss(model, boundary_data, criterion)
+
+        # Natural boundary conditions loss
+        loss_natural = compute_natural_bc_loss(model, boundary_data, material_props, criterion)
 
         # Total loss
         total_loss = (
             config.lambda_physics * loss_physics
             + config.lambda_boundary * loss_boundary
+            + config.lambda_natural * loss_natural
         )
 
         total_loss.backward()
@@ -226,6 +233,7 @@ def main(config: TrainingConfig):
                     "loss/avg": avg_loss,
                     "loss/physics": loss_physics.item(),
                     "loss/boundary": loss_boundary.item(),
+                    "loss/natural": loss_natural.item(),
                     "lr": optimizer.param_groups[0]["lr"],
                 },
                 step=epoch,
@@ -234,6 +242,7 @@ def main(config: TrainingConfig):
                 avg=f"{avg_loss:.2e}",
                 phys=f"{loss_physics.item():.2e}",
                 bc=f"{loss_boundary.item():.2e}",
+                nat=f"{loss_natural.item():.2e}",
             )
 
             # Early stopping on avg loss

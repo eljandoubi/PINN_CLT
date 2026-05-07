@@ -56,6 +56,13 @@ y_ss = torch.linspace(0, PLATE_WIDTH, N_BOUNDARY, device=device).unsqueeze(1)
 x_ss = torch.full_like(y_ss, PLATE_LENGTH)
 w_ss = torch.zeros_like(y_ss)
 
+# c) Free edges at y=0 and y=W (My=0, Vy=0)
+x_free_y0 = torch.linspace(0, PLATE_LENGTH, N_BOUNDARY, device=device).unsqueeze(1)
+y_free_y0 = torch.zeros_like(x_free_y0)
+
+x_free_yW = torch.linspace(0, PLATE_LENGTH, N_BOUNDARY, device=device).unsqueeze(1)
+y_free_yW = torch.full_like(x_free_yW, PLATE_WIDTH)
+
 # --- 3. PACKAGE DATA INTO DICTIONARIES ---
 
 boundary_data = {
@@ -66,6 +73,12 @@ boundary_data = {
     "simply_supported": {
         "xy": torch.cat([x_ss, y_ss], dim=1),
         "w": w_ss,
+    },
+    "free_edge_y0": {
+        "xy": torch.cat([x_free_y0, y_free_y0], dim=1),
+    },
+    "free_edge_yW": {
+        "xy": torch.cat([x_free_yW, y_free_yW], dim=1),
     },
 }
 
@@ -82,5 +95,10 @@ material_props = {
 print(f"\n--- Data Summary (device: {device}) ---")
 print(f"Fixed edge points: {boundary_data['fixed_edge']['xy'].shape}")
 print(f"Simply supported points: {boundary_data['simply_supported']['xy'].shape}")
+print(f"Free edge y=0 points: {boundary_data['free_edge_y0']['xy'].shape}")
+print(f"Free edge y=W points: {boundary_data['free_edge_yW']['xy'].shape}")
 print("\nGoverning PDE (orthotropic plate):")
 print("  D11·∂⁴w/∂x⁴ + 2(D12+2D66)·∂⁴w/∂x²∂y² + D22·∂⁴w/∂y⁴ = q")
+print("\nNatural BCs:")
+print("  Simply supported (x=L): Mx = 0")
+print("  Free edges (y=0, y=W): My = 0, Vy = 0")
