@@ -15,7 +15,7 @@ D11·∂⁴w/∂x⁴ + 2(D12 + 2·D66)·∂⁴w/∂x²∂y² + D22·∂⁴w/∂y
 - **Mini-batch collocation** — fresh random domain points resampled each epoch for memory efficiency
 - **Checkpointing & resume** — save/load full training state
 - **Early stopping** — configurable patience-based stopping
-- **W&B logging** — losses, learning rate, displacement plots, and training video
+- **W&B logging** — losses, learning rate, displacement plots, training video, and model artifact upload
 - **CLI configuration** — all hyperparameters configurable via command-line arguments
 
 ## Project Structure
