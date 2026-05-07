@@ -204,7 +204,7 @@ def compute_pde_residual(model, xy, material_props, normalize=False):
 
 def compute_boundary_loss(model, boundary_data, criterion=None):
     """
-    Compute boundary condition losses:
+    Compute essential boundary condition losses:
     - Fixed edge (x=0): w=0, dw/dx=0
     - Simply supported edge (x=L): w=0
 
@@ -238,3 +238,117 @@ def compute_boundary_loss(model, boundary_data, criterion=None):
     loss_w_ss = criterion(w_pred_ss, w_target_ss)
 
     return loss_w_fixed + loss_slope_fixed + loss_w_ss
+
+
+def compute_natural_bc_loss(model, boundary_data, material_props, criterion=None):
+    """
+    Compute natural boundary condition losses:
+    - Simply supported edge (x=L): Mx = -(D11·∂²w/∂x² + D12·∂²w/∂y²) = 0
+    - Free edges (y=0, y=W): My = -(D12·∂²w/∂x² + D22·∂²w/∂y²) = 0
+    - Free edges (y=0, y=W): Vy = -(D22·∂³w/∂y³ + (D12+2D66)·∂³w/∂x²∂y) = 0
+
+    Args:
+        model: PINN model
+        boundary_data: dict with boundary condition data
+        material_props: dict with D11, D22, D12, D66
+        criterion: loss function (default: MSELoss)
+
+    Returns:
+        Total natural BC loss (scalar)
+    """
+    if criterion is None:
+        criterion = torch.nn.MSELoss()
+
+    # Extract material properties
+    D11 = material_props["D11"]
+    D22 = material_props["D22"]
+    D12 = material_props["D12"]
+    D66 = material_props["D66"]
+
+    total_loss = torch.tensor(0.0, device=next(model.parameters()).device)
+
+    # --- Simply Supported Edge (x=L): Mx = 0 ---
+    xy_ss = boundary_data["simply_supported"]["xy"].requires_grad_(True)
+    x_ss = xy_ss[:, 0:1].requires_grad_(True)
+    y_ss = xy_ss[:, 1:2].requires_grad_(True)
+    xy_ss_input = torch.cat([x_ss, y_ss], dim=1)
+
+    w_ss = model(xy_ss_input)
+    ones = torch.ones_like(w_ss)
+
+    # First derivatives
+    dw_dx_ss = torch.autograd.grad(w_ss, x_ss, grad_outputs=ones, create_graph=True)[0]
+    dw_dy_ss = torch.autograd.grad(w_ss, y_ss, grad_outputs=ones, create_graph=True)[0]
+
+    # Second derivatives
+    d2w_dx2_ss = torch.autograd.grad(dw_dx_ss, x_ss, grad_outputs=ones, create_graph=True)[0]
+    d2w_dy2_ss = torch.autograd.grad(dw_dy_ss, y_ss, grad_outputs=ones, create_graph=True)[0]
+
+    # Bending moment Mx at x=L
+    Mx_ss = -(D11 * d2w_dx2_ss + D12 * d2w_dy2_ss)
+    loss_Mx_ss = zero_loss(criterion, Mx_ss)
+    total_loss = total_loss + loss_Mx_ss
+
+    # --- Free Edge y=0: My = 0, Vy = 0 ---
+    xy_y0 = boundary_data["free_edge_y0"]["xy"].requires_grad_(True)
+    x_y0 = xy_y0[:, 0:1].requires_grad_(True)
+    y_y0 = xy_y0[:, 1:2].requires_grad_(True)
+    xy_y0_input = torch.cat([x_y0, y_y0], dim=1)
+
+    w_y0 = model(xy_y0_input)
+    ones_y0 = torch.ones_like(w_y0)
+
+    # First derivatives
+    dw_dx_y0 = torch.autograd.grad(w_y0, x_y0, grad_outputs=ones_y0, create_graph=True)[0]
+    dw_dy_y0 = torch.autograd.grad(w_y0, y_y0, grad_outputs=ones_y0, create_graph=True)[0]
+
+    # Second derivatives
+    d2w_dx2_y0 = torch.autograd.grad(dw_dx_y0, x_y0, grad_outputs=ones_y0, create_graph=True)[0]
+    d2w_dy2_y0 = torch.autograd.grad(dw_dy_y0, y_y0, grad_outputs=ones_y0, create_graph=True)[0]
+
+    # Bending moment My at y=0
+    My_y0 = -(D12 * d2w_dx2_y0 + D22 * d2w_dy2_y0)
+    loss_My_y0 = zero_loss(criterion, My_y0)
+    total_loss = total_loss + loss_My_y0
+
+    # Third derivatives for shear force Vy
+    d3w_dy3_y0 = torch.autograd.grad(d2w_dy2_y0, y_y0, grad_outputs=ones_y0, create_graph=True)[0]
+    d3w_dx2dy_y0 = torch.autograd.grad(d2w_dx2_y0, y_y0, grad_outputs=ones_y0, create_graph=True)[0]
+
+    # Effective shear force Vy at y=0
+    Vy_y0 = -(D22 * d3w_dy3_y0 + (D12 + 2 * D66) * d3w_dx2dy_y0)
+    loss_Vy_y0 = zero_loss(criterion, Vy_y0)
+    total_loss = total_loss + loss_Vy_y0
+
+    # --- Free Edge y=W: My = 0, Vy = 0 ---
+    xy_yW = boundary_data["free_edge_yW"]["xy"].requires_grad_(True)
+    x_yW = xy_yW[:, 0:1].requires_grad_(True)
+    y_yW = xy_yW[:, 1:2].requires_grad_(True)
+    xy_yW_input = torch.cat([x_yW, y_yW], dim=1)
+
+    w_yW = model(xy_yW_input)
+    ones_yW = torch.ones_like(w_yW)
+
+    # First derivatives
+    dw_dx_yW = torch.autograd.grad(w_yW, x_yW, grad_outputs=ones_yW, create_graph=True)[0]
+    dw_dy_yW = torch.autograd.grad(w_yW, y_yW, grad_outputs=ones_yW, create_graph=True)[0]
+
+    # Second derivatives
+    d2w_dx2_yW = torch.autograd.grad(dw_dx_yW, x_yW, grad_outputs=ones_yW, create_graph=True)[0]
+    d2w_dy2_yW = torch.autograd.grad(dw_dy_yW, y_yW, grad_outputs=ones_yW, create_graph=True)[0]
+
+    # Bending moment My at y=W
+    My_yW = -(D12 * d2w_dx2_yW + D22 * d2w_dy2_yW)
+    loss_My_yW = zero_loss(criterion, My_yW)
+    total_loss = total_loss + loss_My_yW
+
+    # Third derivatives for shear force Vy
+    d3w_dy3_yW = torch.autograd.grad(d2w_dy2_yW, y_yW, grad_outputs=ones_yW, create_graph=True)[0]
+    d3w_dx2dy_yW = torch.autograd.grad(d2w_dx2_yW, y_yW, grad_outputs=ones_yW, create_graph=True)[0]
+
+    # Effective shear force Vy at y=W
+    Vy_yW = -(D22 * d3w_dy3_yW + (D12 + 2 * D66) * d3w_dx2dy_yW)
+    loss_Vy_yW = zero_loss(criterion, Vy_yW)
+    total_loss = total_loss + loss_Vy_yW
+
+    return total_loss
