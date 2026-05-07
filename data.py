@@ -60,18 +60,23 @@ y_free_yW = torch.full_like(x_free_yW, PLATE_WIDTH)
 
 boundary_data = {
     "fixed_edge": {
-        "xy": torch.cat([x_boundary, y_boundary], dim=1),
+        "x": x_boundary,
+        "y": y_boundary,
         "w": w_boundary,
     },
     "simply_supported": {
+        "x": x_ss,
+        "y": y_ss,
         "xy": torch.cat([x_ss, y_ss], dim=1),
         "w": w_ss,
     },
     "free_edge_y0": {
-        "xy": torch.cat([x_free_y0, y_free_y0], dim=1),
+        "x": x_free_y0,
+        "y": y_free_y0,
     },
     "free_edge_yW": {
-        "xy": torch.cat([x_free_yW, y_free_yW], dim=1),
+        "x": x_free_yW,
+        "y": y_free_yW,
     },
 }
 
