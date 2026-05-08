@@ -287,14 +287,6 @@ def main(config: TrainingConfig):
         loss_accumulator += current_loss
         loss_count += 1
 
-        # Periodically reset adaptive weights to initial values
-        if (
-            adaptive_weighter is not None
-            and config.reset_period is not None
-            and epoch % config.reset_period == 0
-        ):
-            adaptive_weighter.reset()
-
         # Logging
         if epoch % config.log_every == 0:
             avg_loss = loss_accumulator / loss_count
@@ -320,6 +312,14 @@ def main(config: TrainingConfig):
                 bc=f"{loss_boundary.item():.2e}",
                 nat=f"{loss_natural.item():.2e}",
             )
+
+            # Periodically reset adaptive weights to initial values
+            if (
+                adaptive_weighter is not None
+                and config.reset_period is not None
+                and epoch % config.reset_period == 0
+            ):
+                adaptive_weighter.reset()
 
             # Early stopping on avg loss
             if early_stop.step(avg_loss):
