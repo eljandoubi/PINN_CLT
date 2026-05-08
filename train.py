@@ -64,7 +64,7 @@ class TrainingConfig:
     scheduler_gamma: float = 0.5
     max_grad_norm: float = 1.0
     batch_size: int = int(2**12)
-    reset_periode: int | None = (
+    reset_period: int | None = (
         None  # If set, resets adaptive weights every N epochs (for long runs)
     )
     log_every: int = 1000
@@ -76,6 +76,8 @@ class TrainingConfig:
     patience: int = 10  # Early stopping patience
     use_residual: bool = False  # Use ResNet-like residual blocks
     use_norm: bool = False  # Apply LayerNorm inside residual blocks
+    use_ffmlp: bool = False  # Use Feed-Forward MLP
+    normalize: bool = False  # Normalize PDE/natural BC losses by D11
     adaptive_weights: bool = False  # Use learnable adaptive loss weighting
     run_id: str | None = None  # Optional run ID for logging (overrides auto-generated)
 
@@ -112,9 +114,9 @@ class TrainingConfig:
         assert self.log_every % self.patience == 0, (
             "log_every must be a multiple of patience"
         )
-        if self.reset_periode is not None:
-            assert self.reset_periode % self.log_every == 0, (
-                "reset_periode must be a multiple of log_every"
+        if self.reset_period is not None:
+            assert self.reset_period % self.log_every == 0, (
+                "reset_period must be a multiple of log_every"
             )
 
     def set_id(self, run_id: str):
@@ -178,6 +180,7 @@ def main(config: TrainingConfig):
         activation=activation_map[config.activation],
         use_residual=config.use_residual,
         use_norm=config.use_norm,
+        use_ffmlp=config.use_ffmlp,
     ).to(device)
 
     # --- ADAPTIVE LOSS WEIGHTING ---
@@ -243,7 +246,9 @@ def main(config: TrainingConfig):
             ],
             dim=1,
         )
-        residual = compute_pde_residual(model, xy_batch, material_props)
+        residual = compute_pde_residual(
+            model, xy_batch, material_props, normalize=config.normalize
+        )
         loss_physics = zero_loss(criterion, residual)
 
         # Boundary loss (essential BCs)
@@ -251,7 +256,7 @@ def main(config: TrainingConfig):
 
         # Natural boundary conditions loss
         loss_natural = compute_natural_bc_loss(
-            model, boundary_data, material_props, criterion
+            model, boundary_data, material_props, criterion, normalize=config.normalize
         )
 
         # Total loss (adaptive or manual weighting)
@@ -268,7 +273,13 @@ def main(config: TrainingConfig):
 
         total_loss.backward()
         # Gradient clipping to stabilize training
-        torch.nn.utils.clip_grad_norm_(params, max_norm=config.max_grad_norm)
+        torch.nn.utils.clip_grad_norm_(
+            model.parameters(), max_norm=config.max_grad_norm
+        )
+        if adaptive_weighter is not None:
+            torch.nn.utils.clip_grad_norm_(
+                adaptive_weighter.parameters(), max_norm=config.max_grad_norm
+            )
         optimizer.step()
         scheduler.step()
 
@@ -279,8 +290,8 @@ def main(config: TrainingConfig):
         # Periodically reset adaptive weights to initial values
         if (
             adaptive_weighter is not None
-            and config.reset_periode is not None
-            and epoch % config.reset_periode == 0
+            and config.reset_period is not None
+            and epoch % config.reset_period == 0
         ):
             adaptive_weighter.reset()
 

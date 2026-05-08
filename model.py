@@ -67,32 +67,29 @@ class AdaptiveLossWeights(nn.Module):
             self.log_vars.copy_(self._initial_log_vars.to(self.log_vars.device))
 
 
-def zero_loss(criterion: nn.Module, input: torch.Tensor) -> torch.Tensor:
-    """Compute criterion(input, 0) without allocating a zero tensor.
+class FFMLP(nn.Module):
+    """Transformer-like feedforward MLP block"""
 
-    For standard losses against a zero target, this avoids the memory
-    overhead of torch.zeros_like(input) by computing directly:
-      MSE -> mean(input²)
-      L1  -> mean(|input|)
-      Huber/ReverseHuber -> use scalar zero broadcast
-    """
-    if isinstance(criterion, nn.MSELoss):
-        sq = input.pow(2)
-        if criterion.reduction == "mean":
-            return sq.mean()
-        elif criterion.reduction == "sum":
-            return sq.sum()
-        return sq
-    elif isinstance(criterion, nn.L1Loss):
-        ab = input.abs()
-        if criterion.reduction == "mean":
-            return ab.mean()
-        elif criterion.reduction == "sum":
-            return ab.sum()
-        return ab
-    else:
-        # Huber, ReverseHuber, etc.: use scalar zero (no allocation)
-        return criterion(input, input.new_zeros(1).expand_as(input))
+    def __init__(
+        self,
+        in_features: int,
+        hidden_features: int | None = None,
+        out_features: int | None = None,
+        activation: type[nn.Module] = nn.ReLU,
+    ):
+        super().__init__()
+        hidden_features = hidden_features or in_features
+        out_features = out_features or in_features
+
+        self.down_proj = nn.Linear(in_features, hidden_features)
+        self.act = activation()
+        self.up_proj = nn.Linear(hidden_features, out_features)
+        self.gate_proj = nn.Linear(in_features, out_features)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        down = self.down_proj(x)
+        gate = self.gate_proj(x)
+        return self.up_proj(self.act(down) * gate)
 
 
 class ResidualBlock(nn.Module):
@@ -102,11 +99,33 @@ class ResidualBlock(nn.Module):
     to the shortcut path.
     """
 
-    def __init__(self, in_features, out_features, activation=nn.Tanh, use_norm=False):
+    def __init__(
+        self,
+        in_features: int,
+        out_features: int,
+        activation: type[nn.Module] = nn.Tanh,
+        use_norm: bool = False,
+        use_ffmlp: bool = False,
+    ):
         super().__init__()
-        self.fc1 = nn.Linear(in_features, out_features)
+
         self.act = activation()
-        self.fc2 = nn.Linear(out_features, out_features)
+        if use_ffmlp:
+            self.fc1 = FFMLP(
+                in_features,
+                hidden_features=out_features,
+                out_features=out_features,
+                activation=activation,
+            )
+            self.fc2 = FFMLP(
+                out_features,
+                hidden_features=out_features,
+                out_features=out_features,
+                activation=activation,
+            )
+        else:
+            self.fc1 = nn.Linear(in_features, out_features)
+            self.fc2 = nn.Linear(out_features, out_features)
 
         self.use_norm = use_norm
         if use_norm:
@@ -115,11 +134,19 @@ class ResidualBlock(nn.Module):
             self.norm2 = nn.LayerNorm(out_features)
 
         if in_features != out_features:
-            self.shortcut = nn.Linear(in_features, out_features)
+            if use_ffmlp:
+                self.shortcut = FFMLP(
+                    in_features,
+                    hidden_features=out_features,
+                    out_features=out_features,
+                    activation=activation,
+                )
+            else:
+                self.shortcut = nn.Linear(in_features, out_features)
         else:
             self.shortcut = None
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         identity = x
         out = self.fc1(x)
         if self.use_norm:
@@ -145,10 +172,11 @@ class PINN(nn.Module):
     def __init__(
         self,
         hidden_layers=4,
-        hidden_units=64,
+        hidden_units=128,
         activation=nn.Tanh,
         use_residual: bool = False,
         use_norm: bool = False,
+        use_ffmlp: bool = False,
     ):
         super().__init__()
         layers = []
@@ -162,12 +190,24 @@ class PINN(nn.Module):
             # Stack residual blocks
             for _ in range(hidden_layers):
                 layers.append(
-                    ResidualBlock(in_features, hidden_units, activation, use_norm)
+                    ResidualBlock(
+                        in_features, hidden_units, activation, use_norm, use_ffmlp
+                    )
                 )
 
         else:
             for _ in range(hidden_layers):
-                layers.append(nn.Linear(in_features, hidden_units))
+                if use_ffmlp:
+                    layers.append(
+                        FFMLP(
+                            in_features,
+                            hidden_features=hidden_units,
+                            out_features=hidden_units,
+                            activation=activation,
+                        )
+                    )
+                else:
+                    layers.append(nn.Linear(in_features, hidden_units))
                 layers.append(activation())
                 in_features = hidden_units
 
@@ -187,12 +227,17 @@ class PINN(nn.Module):
                 if m.bias is not None:
                     nn.init.zeros_(m.bias)
 
-    def forward(self, xy):
+    def forward(self, xy: torch.Tensor) -> torch.Tensor:
         """Forward pass: predict displacement w given (x, y) coordinates."""
         return self.net(xy)
 
 
-def compute_pde_residual(model, xy, material_props, normalize=False):
+def compute_pde_residual(
+    model: PINN,
+    xy: torch.Tensor,
+    material_props: dict[str, float],
+    normalize: bool = False,
+) -> torch.Tensor:
     """
     Compute the residual of the orthotropic plate PDE:
         D11·∂⁴w/∂x⁴ + 2(D12+2D66)·∂⁴w/∂x²∂y² + D22·∂⁴w/∂y⁴ - q = 0
@@ -256,6 +301,34 @@ def compute_pde_residual(model, xy, material_props, normalize=False):
     return residual
 
 
+def zero_loss(criterion: nn.Module, input: torch.Tensor) -> torch.Tensor:
+    """Compute criterion(input, 0) without allocating a zero tensor.
+
+    For standard losses against a zero target, this avoids the memory
+    overhead of torch.zeros_like(input) by computing directly:
+      MSE -> mean(input²)
+      L1  -> mean(|input|)
+      Huber/ReverseHuber -> use scalar zero broadcast
+    """
+    if isinstance(criterion, nn.MSELoss):
+        sq = input.pow(2)
+        if criterion.reduction == "mean":
+            return sq.mean()
+        elif criterion.reduction == "sum":
+            return sq.sum()
+        return sq
+    elif isinstance(criterion, nn.L1Loss):
+        ab = input.abs()
+        if criterion.reduction == "mean":
+            return ab.mean()
+        elif criterion.reduction == "sum":
+            return ab.sum()
+        return ab
+    else:
+        # Huber, ReverseHuber, etc.: use scalar zero (no allocation)
+        return criterion(input, input.new_zeros(1).expand_as(input))
+
+
 def compute_boundary_loss(model, boundary_data, criterion=None):
     """
     Compute essential boundary condition losses:
@@ -297,7 +370,9 @@ def compute_boundary_loss(model, boundary_data, criterion=None):
     return loss_w_fixed + loss_slope_fixed + loss_w_ss
 
 
-def compute_natural_bc_loss(model, boundary_data, material_props, criterion=None):
+def compute_natural_bc_loss(
+    model, boundary_data, material_props, criterion=None, normalize=False
+):
     """
     Compute natural boundary condition losses:
     - Simply supported edge (x=L): Mx = -(D11·∂²w/∂x² + D12·∂²w/∂y²) = 0
@@ -344,6 +419,8 @@ def compute_natural_bc_loss(model, boundary_data, material_props, criterion=None
 
     # Bending moment Mx at x=L
     Mx_ss = -(D11 * d2w_dx2_ss + D12 * d2w_dy2_ss)
+    if normalize:
+        Mx_ss = Mx_ss / (D11 + 1e-12)
     loss_Mx_ss = zero_loss(criterion, Mx_ss)
     total_loss = loss_Mx_ss
 
@@ -373,6 +450,8 @@ def compute_natural_bc_loss(model, boundary_data, material_props, criterion=None
 
     # Bending moment My at y=0
     My_y0 = -(D12 * d2w_dx2_y0 + D22 * d2w_dy2_y0)
+    if normalize:
+        My_y0 = My_y0 / (D11 + 1e-12)
     loss_My_y0 = zero_loss(criterion, My_y0)
     total_loss = total_loss + loss_My_y0
 
@@ -386,6 +465,8 @@ def compute_natural_bc_loss(model, boundary_data, material_props, criterion=None
 
     # Effective shear force Vy at y=0
     Vy_y0 = -(D22 * d3w_dy3_y0 + (D12 + 2 * D66) * d3w_dx2dy_y0)
+    if normalize:
+        Vy_y0 = Vy_y0 / (D11 + 1e-12)
     loss_Vy_y0 = zero_loss(criterion, Vy_y0)
     total_loss = total_loss + loss_Vy_y0
 
@@ -415,6 +496,8 @@ def compute_natural_bc_loss(model, boundary_data, material_props, criterion=None
 
     # Bending moment My at y=W
     My_yW = -(D12 * d2w_dx2_yW + D22 * d2w_dy2_yW)
+    if normalize:
+        My_yW = My_yW / (D11 + 1e-12)
     loss_My_yW = zero_loss(criterion, My_yW)
     total_loss = total_loss + loss_My_yW
 
@@ -428,6 +511,8 @@ def compute_natural_bc_loss(model, boundary_data, material_props, criterion=None
 
     # Effective shear force Vy at y=W
     Vy_yW = -(D22 * d3w_dy3_yW + (D12 + 2 * D66) * d3w_dx2dy_yW)
+    if normalize:
+        Vy_yW = Vy_yW / (D11 + 1e-12)
     loss_Vy_yW = zero_loss(criterion, Vy_yW)
     total_loss = total_loss + loss_Vy_yW
 

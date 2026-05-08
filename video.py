@@ -5,7 +5,6 @@ fall back to saving a GIF using Pillow.
 """
 
 from pathlib import Path
-from typing import Union
 
 import imageio.v2 as imageio
 import numpy as np
@@ -22,8 +21,8 @@ def _normalize_frame(img: np.ndarray, target_size: tuple[int, int]) -> np.ndarra
 
 
 def make_video(
-    plot_dir: Union[str, Path] = "plots",
-    output_path: Union[str, Path] = "displacement_evolution.mp4",
+    plot_dir: str | Path = "plots",
+    output_path: str | Path = "displacement_evolution.mp4",
     fps: int = 10,
 ):
     plot_dir = Path(plot_dir)
