@@ -5,7 +5,7 @@ import torch.nn as nn
 class ReverseHuberLoss(nn.Module):
     """Reverse Huber loss: L1 for |error| <= delta, MSE for |error| > delta."""
 
-    def __init__(self, delta: float = 1.0, reduction: str = "mean"):
+    def __init__(self, delta: float = 1.0, reduction: str = "mean") -> None:
         super().__init__()
         self.delta = delta
         self.mse = nn.MSELoss(reduction="none")
@@ -30,7 +30,7 @@ class AdaptiveLossWeights(nn.Module):
     This automatically balances losses of different magnitudes during training.
     """
 
-    def __init__(self, num_losses: int = 3, initial_weights: list[float] | None = None):
+    def __init__(self, num_losses: int = 3, initial_weights: list[float] | None = None) -> None:
         super().__init__()
         if initial_weights is not None:
             # log_var = -log(weight) so that exp(-log_var) = weight
@@ -76,7 +76,7 @@ class FFMLP(nn.Module):
         hidden_features: int | None = None,
         out_features: int | None = None,
         activation: type[nn.Module] = nn.ReLU,
-    ):
+    ) -> None:
         super().__init__()
         hidden_features = hidden_features or in_features
         out_features = out_features or in_features
@@ -106,7 +106,7 @@ class ResidualBlock(nn.Module):
         activation: type[nn.Module] = nn.Tanh,
         use_norm: bool = False,
         use_ffmlp: bool = False,
-    ):
+    ) -> None:
         super().__init__()
 
         self.act = activation()
@@ -171,13 +171,13 @@ class PINN(nn.Module):
 
     def __init__(
         self,
-        hidden_layers=4,
-        hidden_units=128,
-        activation=nn.Tanh,
+        hidden_layers: int = 4,
+        hidden_units: int = 128,
+        activation: type[nn.Module] = nn.Tanh,
         use_residual: bool = False,
         use_norm: bool = False,
         use_ffmlp: bool = False,
-    ):
+    ) -> None:
         super().__init__()
         layers = []
         in_features = 2
@@ -220,7 +220,7 @@ class PINN(nn.Module):
         # Initialize weights for all Linear modules
         self._initialize_weights()
 
-    def _initialize_weights(self):
+    def _initialize_weights(self) -> None:
         for m in self.modules():
             if isinstance(m, nn.Linear):
                 nn.init.xavier_normal_(m.weight)
@@ -329,7 +329,11 @@ def zero_loss(criterion: nn.Module, input: torch.Tensor) -> torch.Tensor:
         return criterion(input, input.new_zeros(1).expand_as(input))
 
 
-def compute_boundary_loss(model, boundary_data, criterion=None):
+def compute_boundary_loss(
+    model: PINN,
+    boundary_data: dict[str, dict[str, torch.Tensor]],
+    criterion: nn.Module | None = None,
+) -> torch.Tensor:
     """
     Compute essential boundary condition losses:
     - Fixed edge (x=0): w=0, dw/dx=0
@@ -371,8 +375,12 @@ def compute_boundary_loss(model, boundary_data, criterion=None):
 
 
 def compute_natural_bc_loss(
-    model, boundary_data, material_props, criterion=None, normalize=False
-):
+    model: PINN,
+    boundary_data: dict[str, dict[str, torch.Tensor]],
+    material_props: dict[str, float],
+    criterion: nn.Module | None = None,
+    normalize: bool = False,
+) -> torch.Tensor:
     """
     Compute natural boundary condition losses:
     - Simply supported edge (x=L): Mx = -(D11·∂²w/∂x² + D12·∂²w/∂y²) = 0

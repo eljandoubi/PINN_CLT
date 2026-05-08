@@ -24,7 +24,7 @@ def make_video(
     plot_dir: str | Path = "plots",
     output_path: str | Path = "displacement_evolution.mp4",
     fps: int = 10,
-):
+) -> None:
     plot_dir = Path(plot_dir)
     output_path = Path(output_path)
 
