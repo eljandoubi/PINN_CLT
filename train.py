@@ -64,6 +64,9 @@ class TrainingConfig:
     scheduler_gamma: float = 0.5
     max_grad_norm: float = 1.0
     batch_size: int = int(2**12)
+    reset_periode: int | None = (
+        None  # If set, resets adaptive weights every N epochs (for long runs)
+    )
     log_every: int = 1000
     checkpoint_every: int = 1000
     runs_dir: str | Path = "runs"
@@ -109,6 +112,10 @@ class TrainingConfig:
         assert self.log_every % self.patience == 0, (
             "log_every must be a multiple of patience"
         )
+        if self.reset_periode is not None:
+            assert self.reset_periode % self.log_every == 0, (
+                "reset_periode must be a multiple of log_every"
+            )
 
     def set_id(self, run_id: str):
         """Set run ID (for logging) after initialization."""
@@ -268,6 +275,14 @@ def main(config: TrainingConfig):
         current_loss = total_loss.item()
         loss_accumulator += current_loss
         loss_count += 1
+
+        # Periodically reset adaptive weights to initial values
+        if (
+            adaptive_weighter is not None
+            and config.reset_periode is not None
+            and epoch % config.reset_periode == 0
+        ):
+            adaptive_weighter.reset()
 
         # Logging
         if epoch % config.log_every == 0:
