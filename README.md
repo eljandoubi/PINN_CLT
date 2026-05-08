@@ -138,7 +138,10 @@ uv run train.py --help
 | `checkpoint_every` | 1000 | Checkpoint & plot frequency (epochs) |
 | `use_residual` | `false` | Use ResNet-like residual blocks |
 | `use_norm` | `false` | Apply LayerNorm inside residual blocks |
+| `use_ffmlp` | `false` | Use gated feed-forward MLP blocks (transformer-style) |
+| `normalize` | `false` | Normalize PDE/natural BC losses by D11 for stability |
 | `adaptive_weights` | `false` | Learnable adaptive loss weighting (Kendall et al.) |
+| `reset_period` | `None` | Reset adaptive weights every N epochs (must be multiple of `log_every`) |
 | `runs_dir` | `runs` | Base directory for all run outputs |
 | `run_id` | `None` | W&B run ID (auto-generated if omitted) |
 | `resume` | `""` | Path to checkpoint for resuming |
