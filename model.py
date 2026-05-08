@@ -39,6 +39,7 @@ class AdaptiveLossWeights(nn.Module):
             )
         else:
             init_vals = torch.zeros(num_losses)
+        self.register_buffer("_initial_log_vars", init_vals.clone())
         self.log_vars = nn.Parameter(init_vals)
 
     def forward(self, *losses: torch.Tensor) -> tuple[torch.Tensor, list[float]]:
@@ -50,13 +51,20 @@ class AdaptiveLossWeights(nn.Module):
         Returns:
             (total_weighted_loss, list of effective weights)
         """
-        total = torch.tensor(0.0, device=losses[0].device, dtype=losses[0].dtype)
+        total = torch.zeros_like(losses[0])
         weights = []
         for i, loss in enumerate(losses):
             precision = torch.exp(-self.log_vars[i])
             total = total + precision * loss + self.log_vars[i]
             weights.append(precision.item())
         return total, weights
+
+    _initial_log_vars: torch.Tensor
+
+    def reset(self) -> None:
+        """Reset log_vars to their initial values."""
+        with torch.no_grad():
+            self.log_vars.copy_(self._initial_log_vars.to(self.log_vars.device))
 
 
 def zero_loss(criterion: nn.Module, input: torch.Tensor) -> torch.Tensor:
