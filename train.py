@@ -81,7 +81,7 @@ class TrainingConfig:
     adaptive_weights: bool = False  # Use learnable adaptive loss weighting
     run_id: str | None = None  # Optional run ID for logging (overrides auto-generated)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         assert self.hidden_layers > 0, "hidden_layers must be > 0"
         assert self.hidden_units > 0, "hidden_units must be > 0"
         assert self.activation in ("tanh", "silu", "gelu", "softplus", "mish"), (
@@ -119,11 +119,11 @@ class TrainingConfig:
                 "reset_period must be a multiple of log_every"
             )
 
-    def set_id(self, run_id: str):
+    def set_id(self, run_id: str) -> None:
         """Set run ID (for logging) after initialization."""
         self.run_id = run_id
 
-    def update_paths(self):
+    def update_paths(self) -> None:
         """Update checkpoint and plot directories based on base run directory."""
         assert self.run_id is not None, "run_id must be set before updating paths"
 
@@ -137,7 +137,7 @@ class TrainingConfig:
         ), "checkpoint_dir and plot_dir must be Path objects after update_paths()"
 
 
-def main(config: TrainingConfig):
+def main(config: TrainingConfig) -> None:
     # --- WANDB INIT ---
     run = wandb.init(
         project="PINN_CLT",

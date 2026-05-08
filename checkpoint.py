@@ -13,7 +13,7 @@ def save_checkpoint(
     epoch: int,
     best_loss: float,
     adaptive_weighter: torch.nn.Module | None = None,
-):
+) -> None:
     """Save training checkpoint."""
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     data = {
