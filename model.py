@@ -30,7 +30,9 @@ class AdaptiveLossWeights(nn.Module):
     This automatically balances losses of different magnitudes during training.
     """
 
-    def __init__(self, num_losses: int = 3, initial_weights: list[float] | None = None) -> None:
+    def __init__(
+        self, num_losses: int = 3, initial_weights: list[float] | None = None
+    ) -> None:
         super().__init__()
         if initial_weights is not None:
             # log_var = -log(weight) so that exp(-log_var) = weight
