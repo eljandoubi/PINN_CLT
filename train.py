@@ -238,6 +238,41 @@ def main(config: TrainingConfig) -> None:
     # --- EARLY STOPPING ---
     early_stop = EarlyStopping(patience=config.patience)
 
+    # --- HELPER FUNCTIONS ---
+    def compute_losses(xy_batch: torch.Tensor):
+        """Forward pass: compute all loss components."""
+        nonlocal eff_weights
+        residual = compute_pde_residual(
+            model, xy_batch, material_props, normalize=config.normalize
+        )
+        l_phys = zero_loss(criterion, residual)
+        l_bc = compute_boundary_loss(model, boundary_data, criterion)
+        l_nat = compute_natural_bc_loss(
+            model,
+            boundary_data,
+            material_props,
+            criterion,
+            normalize=config.normalize,
+        )
+        if adaptive_weighter is not None:
+            total, eff_weights = adaptive_weighter(l_phys, l_bc, l_nat)
+        else:
+            total = (
+                config.lambda_physics * l_phys
+                + config.lambda_boundary * l_bc
+                + config.lambda_natural * l_nat
+            )
+        return total, l_phys, l_bc, l_nat
+
+    def clip_grads():
+        torch.nn.utils.clip_grad_norm_(
+            model.parameters(), max_norm=config.max_grad_norm
+        )
+        if adaptive_weighter is not None:
+            torch.nn.utils.clip_grad_norm_(
+                adaptive_weighter.parameters(), max_norm=config.max_grad_norm
+            )
+
     # --- TRAINING LOOP ---
     pbar = trange(start_epoch, config.epochs + 1, desc="Training")
     loss_accumulator = 0.0
@@ -273,40 +308,6 @@ def main(config: TrainingConfig) -> None:
             dim=1,
         )
 
-        def compute_losses():
-            """Forward pass: compute all loss components."""
-            nonlocal eff_weights
-            residual = compute_pde_residual(
-                model, xy_batch, material_props, normalize=config.normalize
-            )
-            l_phys = zero_loss(criterion, residual)
-            l_bc = compute_boundary_loss(model, boundary_data, criterion)
-            l_nat = compute_natural_bc_loss(
-                model,
-                boundary_data,
-                material_props,
-                criterion,
-                normalize=config.normalize,
-            )
-            if adaptive_weighter is not None:
-                total, eff_weights = adaptive_weighter(l_phys, l_bc, l_nat)
-            else:
-                total = (
-                    config.lambda_physics * l_phys
-                    + config.lambda_boundary * l_bc
-                    + config.lambda_natural * l_nat
-                )
-            return total, l_phys, l_bc, l_nat
-
-        def clip_grads():
-            torch.nn.utils.clip_grad_norm_(
-                model.parameters(), max_norm=config.max_grad_norm
-            )
-            if adaptive_weighter is not None:
-                torch.nn.utils.clip_grad_norm_(
-                    adaptive_weighter.parameters(), max_norm=config.max_grad_norm
-                )
-
         if using_lbfgs:
             # L-BFGS needs a closure because it re-evaluates the loss
             # multiple times per step during its line search.
@@ -315,7 +316,9 @@ def main(config: TrainingConfig) -> None:
             def closure():
                 nonlocal total_loss, loss_physics, loss_boundary, loss_natural
                 lbfgs_optimizer.zero_grad(set_to_none=True)  # type: ignore[union-attr]
-                total_loss, loss_physics, loss_boundary, loss_natural = compute_losses()
+                total_loss, loss_physics, loss_boundary, loss_natural = compute_losses(
+                    xy_batch
+                )
                 total_loss.backward()
                 clip_grads()
                 return total_loss
@@ -323,7 +326,9 @@ def main(config: TrainingConfig) -> None:
             lbfgs_optimizer.step(closure)  # type: ignore[union-attr]
         else:
             optimizer.zero_grad(set_to_none=True)
-            total_loss, loss_physics, loss_boundary, loss_natural = compute_losses()
+            total_loss, loss_physics, loss_boundary, loss_natural = compute_losses(
+                xy_batch
+            )
             total_loss.backward()
             clip_grads()
             optimizer.step()
