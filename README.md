@@ -31,6 +31,12 @@ D11·∂⁴w/∂x⁴ + 2(D12 + 2·D66)·∂⁴w/∂x²∂y² + D22·∂⁴w/∂y
 ├── early_stopping.py   # Early stopping class
 ├── plotting.py         # 3D displacement field w(x,y) visualization
 ├── video.py            # Generate MP4/GIF video from plot frames
+├── tests/              # Test suite (pytest)
+│   ├── test_checkpoint.py
+│   ├── test_data.py
+│   ├── test_early_stopping.py
+│   ├── test_model.py
+│   └── test_train.py
 ├── pyproject.toml      # Project metadata & dependencies (managed by uv)
 └── LICENSE             # Apache 2.0
 ```
@@ -115,6 +121,12 @@ uv run train.py --resume runs/<run_id>/checkpoints/best.pt --run_id <run_id>
 
 ```bash
 uv run video.py
+```
+
+### Run tests
+
+```bash
+uv run pytest
 ```
 
 ### All available options
