@@ -210,7 +210,7 @@ class PINN(nn.Module):
                     )
                 else:
                     layers.append(nn.Linear(in_features, hidden_units))
-                layers.append(activation())
+                    layers.append(activation())
                 in_features = hidden_units
 
         # Final projection to output
