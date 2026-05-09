@@ -15,8 +15,9 @@ D11·∂⁴w/∂x⁴ + 2(D12 + 2·D66)·∂⁴w/∂x²∂y² + D22·∂⁴w/∂y
 - **Multiple loss functions** — MSE, Huber, Reverse Huber, and L1
 - **Automatic differentiation** — 4th-order derivatives computed via PyTorch autograd
 - **Mini-batch collocation** — fresh random domain points resampled each epoch
-- **Checkpointing & resume** — save/load full training state (model, optimizer, scheduler)
+- **Checkpointing & resume** — save/load full training state (model, optimizer, scheduler, L-BFGS)
 - **Early stopping** — configurable patience-based stopping on averaged loss
+- **L-BFGS fine-tuning** — optional switch to L-BFGS optimizer after Adam warmup for sharper convergence
 - **W&B logging** — losses, learning rate, 3D displacement plots, training video, and model artifact upload
 - **CLI configuration** — all hyperparameters configurable via `simple-parsing`
 
@@ -98,6 +99,12 @@ uv run train.py --use_residual true --use_norm true --hidden_layers 6 --hidden_u
 uv run train.py --adaptive_weights true --lambda_physics 10.0 --lambda_boundary 1.0 --lambda_natural 1.0
 ```
 
+### With L-BFGS after Adam warmup
+
+```bash
+uv run train.py --use_lbfgs true --lbfgs_warmup 10000 --lbfgs_lr 1.0
+```
+
 ### Resume from checkpoint
 
 ```bash
@@ -141,6 +148,11 @@ uv run train.py --help
 | `use_ffmlp` | `false` | Use gated feed-forward MLP blocks (transformer-style) |
 | `normalize` | `false` | Normalize PDE/natural BC losses by D11 for stability |
 | `adaptive_weights` | `false` | Learnable adaptive loss weighting (Kendall et al.) |
+| `use_lbfgs` | `false` | Switch to L-BFGS optimizer after Adam warmup |
+| `lbfgs_warmup` | 10000 | Number of Adam epochs before switching to L-BFGS |
+| `lbfgs_max_iter` | 20 | Max iterations per L-BFGS step |
+| `lbfgs_history_size` | 50 | L-BFGS history size |
+| `lbfgs_lr` | 1.0 | L-BFGS learning rate |
 | `reset_period` | `None` | Reset adaptive weights every N epochs (must be multiple of `log_every`) |
 | `runs_dir` | `runs` | Base directory for all run outputs |
 | `run_id` | `None` | W&B run ID (auto-generated if omitted) |

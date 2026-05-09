@@ -12,9 +12,9 @@ class ReverseHuberLoss(nn.Module):
         self.l1 = nn.L1Loss(reduction="none")
         self.reduction = reduction
 
-    def forward(self, input: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
-        l1 = self.l1(input, target)
-        mse = self.mse(input, target)
+    def forward(self, pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+        l1 = self.l1(pred, target)
+        mse = self.mse(pred, target)
         loss = torch.where(l1 > self.delta, mse, l1)
         if self.reduction == "mean":
             return loss.mean()
@@ -70,7 +70,11 @@ class AdaptiveLossWeights(nn.Module):
 
 
 class FFMLP(nn.Module):
-    """Transformer-like feedforward MLP block"""
+    """Gated feed-forward MLP block (SwiGLU variant).
+
+    Computes: up_proj(act(down_proj(x)) * gate_proj(x))
+    See: Shazeer, "GLU Variants Improve Transformer", 2020.
+    """
 
     def __init__(
         self,

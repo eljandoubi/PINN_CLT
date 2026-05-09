@@ -224,8 +224,26 @@ def main(config: TrainingConfig) -> None:
     start_epoch = 1
     best_loss = float("inf")
     if config.resume:
-        start_epoch, best_loss = load_checkpoint(
-            config.resume, model, optimizer, scheduler, device, adaptive_weighter
+        # Pre-create L-BFGS optimizer so its state can be restored
+        if config.use_lbfgs:
+            lbfgs_params = list(model.parameters())
+            if adaptive_weighter is not None:
+                lbfgs_params += list(adaptive_weighter.parameters())
+            lbfgs_optimizer = torch.optim.LBFGS(
+                lbfgs_params,
+                lr=config.lbfgs_lr,
+                max_iter=config.lbfgs_max_iter,
+                history_size=config.lbfgs_history_size,
+                line_search_fn="strong_wolfe",
+            )
+        start_epoch, best_loss, using_lbfgs = load_checkpoint(
+            config.resume,
+            model,
+            optimizer,
+            scheduler,
+            device,
+            adaptive_weighter,
+            lbfgs_optimizer,
         )
         start_epoch += 1  # Start from next epoch
         print(f"Resumed from epoch {start_epoch - 1}, best_loss={best_loss:.6e}")
@@ -239,9 +257,14 @@ def main(config: TrainingConfig) -> None:
     early_stop = EarlyStopping(patience=config.patience)
 
     # --- HELPER FUNCTIONS ---
-    def compute_losses(xy_batch: torch.Tensor):
-        """Forward pass: compute all loss components."""
-        nonlocal eff_weights
+    def compute_losses(
+        xy_batch: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, list[float]]:
+        """Forward pass: compute all loss components.
+
+        Returns:
+            (total_loss, physics_loss, boundary_loss, natural_loss, effective_weights)
+        """
         residual = compute_pde_residual(
             model, xy_batch, material_props, normalize=config.normalize
         )
@@ -255,14 +278,19 @@ def main(config: TrainingConfig) -> None:
             normalize=config.normalize,
         )
         if adaptive_weighter is not None:
-            total, eff_weights = adaptive_weighter(l_phys, l_bc, l_nat)
+            total, w = adaptive_weighter(l_phys, l_bc, l_nat)
         else:
             total = (
                 config.lambda_physics * l_phys
                 + config.lambda_boundary * l_bc
                 + config.lambda_natural * l_nat
             )
-        return total, l_phys, l_bc, l_nat
+            w = [
+                config.lambda_physics,
+                config.lambda_boundary,
+                config.lambda_natural,
+            ]
+        return total, l_phys, l_bc, l_nat, w
 
     def clip_grads():
         torch.nn.utils.clip_grad_norm_(
@@ -277,6 +305,7 @@ def main(config: TrainingConfig) -> None:
     pbar = trange(start_epoch, config.epochs + 1, desc="Training")
     loss_accumulator = 0.0
     loss_count = 0
+    epoch = start_epoch  # Default in case loop never runs
     for epoch in pbar:
         model.train()
 
@@ -314,10 +343,15 @@ def main(config: TrainingConfig) -> None:
             total_loss = loss_physics = loss_boundary = loss_natural = torch.tensor(0.0)
 
             def closure():
-                nonlocal total_loss, loss_physics, loss_boundary, loss_natural
+                nonlocal \
+                    total_loss, \
+                    loss_physics, \
+                    loss_boundary, \
+                    loss_natural, \
+                    eff_weights
                 lbfgs_optimizer.zero_grad(set_to_none=True)  # type: ignore[union-attr]
-                total_loss, loss_physics, loss_boundary, loss_natural = compute_losses(
-                    xy_batch
+                total_loss, loss_physics, loss_boundary, loss_natural, eff_weights = (
+                    compute_losses(xy_batch)
                 )
                 total_loss.backward()
                 clip_grads()
@@ -326,8 +360,8 @@ def main(config: TrainingConfig) -> None:
             lbfgs_optimizer.step(closure)  # type: ignore[union-attr]
         else:
             optimizer.zero_grad(set_to_none=True)
-            total_loss, loss_physics, loss_boundary, loss_natural = compute_losses(
-                xy_batch
+            total_loss, loss_physics, loss_boundary, loss_natural, eff_weights = (
+                compute_losses(xy_batch)
             )
             total_loss.backward()
             clip_grads()
@@ -354,7 +388,7 @@ def main(config: TrainingConfig) -> None:
                 "weights/physics": eff_weights[0],
                 "weights/boundary": eff_weights[1],
                 "weights/natural": eff_weights[2],
-                "lr": optimizer.param_groups[0]["lr"],
+                "lr": (lbfgs_optimizer or optimizer).param_groups[0]["lr"],
             }
             wandb.log(log_dict, step=epoch)
             pbar.set_postfix(
@@ -390,6 +424,8 @@ def main(config: TrainingConfig) -> None:
                         epoch,
                         best_loss,
                         adaptive_weighter,
+                        lbfgs_optimizer,
+                        using_lbfgs,
                     )
                 save_checkpoint(
                     config.checkpoint_dir / f"ckpt_epoch_{epoch:06d}.pt",
@@ -399,6 +435,8 @@ def main(config: TrainingConfig) -> None:
                     epoch,
                     best_loss,
                     adaptive_weighter,
+                    lbfgs_optimizer,
+                    using_lbfgs,
                 )
                 # Plot 3D displacement
                 fig_path = plot_displacement_3d(model, epoch, save_dir=config.plot_dir)
@@ -409,21 +447,24 @@ def main(config: TrainingConfig) -> None:
             loss_count = 0
 
     # --- FINAL SAVE & PLOT ---
+    final_epoch = epoch
     save_checkpoint(
         config.checkpoint_dir / "final.pt",
         model,
         optimizer,
         scheduler,
-        epoch,
+        final_epoch,
         best_loss,
         adaptive_weighter,
+        lbfgs_optimizer,
+        using_lbfgs,
     )
-    plot_displacement_3d(model, epoch, save_dir=config.plot_dir)
+    plot_displacement_3d(model, final_epoch, save_dir=config.plot_dir)
 
     # --- GENERATE VIDEO ---
     video_path = config.run_dir / "displacement_evolution.mp4"
     make_video(plot_dir=config.plot_dir, output_path=video_path)
-    wandb.log({"video": wandb.Video(str(video_path))}, step=epoch)
+    wandb.log({"video": wandb.Video(str(video_path))}, step=final_epoch)
 
     # --- UPLOAD CHECKPOINTS TO WANDB ---
     artifact = wandb.Artifact(
