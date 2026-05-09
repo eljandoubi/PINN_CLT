@@ -90,7 +90,7 @@ class FFMLP(nn.Module):
         self.down_proj = nn.Linear(in_features, hidden_features)
         self.act = activation()
         self.up_proj = nn.Linear(hidden_features, out_features)
-        self.gate_proj = nn.Linear(in_features, out_features)
+        self.gate_proj = nn.Linear(in_features, hidden_features)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         down = self.down_proj(x)

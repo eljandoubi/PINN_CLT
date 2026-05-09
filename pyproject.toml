@@ -10,6 +10,7 @@ dependencies = [
     "imageio-ffmpeg>=0.6.0",
     "matplotlib>=3.10.9",
     "pillow>=12.2.0",
+    "pytest>=9.0.3",
     "python-dotenv>=1.2.2",
     "simple-parsing>=0.1.8",
     "torch>=2.11.0",
