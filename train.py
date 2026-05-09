@@ -111,9 +111,6 @@ class TrainingConfig:
         assert self.checkpoint_every % self.log_every == 0, (
             "checkpoint_every must be a multiple of log_every"
         )
-        assert self.log_every % self.patience == 0, (
-            "log_every must be a multiple of patience"
-        )
         if self.reset_period is not None:
             assert self.reset_period % self.log_every == 0, (
                 "reset_period must be a multiple of log_every"

@@ -188,12 +188,11 @@ class PINN(nn.Module):
             # Initial projection to hidden_units
             layers.append(nn.Linear(in_features, hidden_units))
             layers.append(activation())
-            in_features = hidden_units
             # Stack residual blocks
             for _ in range(hidden_layers):
                 layers.append(
                     ResidualBlock(
-                        in_features, hidden_units, activation, use_norm, use_ffmlp
+                        hidden_units, hidden_units, activation, use_norm, use_ffmlp
                     )
                 )
 
