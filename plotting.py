@@ -35,25 +35,27 @@ def plot_displacement_3d(
     Y_np = Y.cpu().numpy()
 
     fig = plt.figure(figsize=(8, 5))
-    ax = fig.add_subplot(111, projection="3d")
-    surf = ax.plot_surface(
-        X_np,
-        Y_np,
-        W,
-        cmap="viridis",
-        linewidth=0,
-        antialiased=True,
-        rcount=n_points,
-        ccount=n_points,
-    )
-    fig.colorbar(surf, ax=ax, shrink=0.6, label="w (m)")
-    ax.set_xlabel("x (m)")
-    ax.set_ylabel("y (m)")
-    ax.set_zlabel("w (m)")
-    ax.set_title(f"Displacement w(x, y) — Epoch {epoch} (3D)")
-    ax.view_init(elev=elev, azim=azim)
+    try:
+        ax = fig.add_subplot(111, projection="3d")
+        surf = ax.plot_surface(
+            X_np,
+            Y_np,
+            W,
+            cmap="viridis",
+            linewidth=0,
+            antialiased=True,
+            rcount=n_points,
+            ccount=n_points,
+        )
+        fig.colorbar(surf, ax=ax, shrink=0.6, label="w (m)")
+        ax.set_xlabel("x (m)")
+        ax.set_ylabel("y (m)")
+        ax.set_zlabel("w (m)")
+        ax.set_title(f"Displacement w(x, y) — Epoch {epoch} (3D)")
+        ax.view_init(elev=elev, azim=azim)
 
-    path = save_dir / f"w_epoch_{epoch:06d}_3d.png"
-    fig.savefig(path, dpi=150, bbox_inches="tight")
-    plt.close(fig)
+        path = save_dir / f"w_epoch_{epoch:06d}_3d.png"
+        fig.savefig(path, dpi=150, bbox_inches="tight")
+    finally:
+        plt.close(fig)
     return path
