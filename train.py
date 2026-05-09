@@ -79,6 +79,11 @@ class TrainingConfig:
     use_ffmlp: bool = False  # Use Feed-Forward MLP
     normalize: bool = False  # Normalize PDE/natural BC losses by D11
     adaptive_weights: bool = False  # Use learnable adaptive loss weighting
+    use_lbfgs: bool = False  # Switch to L-BFGS after warmup
+    lbfgs_warmup: int = 10000  # Number of Adam warmup epochs before switching to L-BFGS
+    lbfgs_max_iter: int = 20  # Max iterations per L-BFGS step
+    lbfgs_history_size: int = 50  # L-BFGS history size
+    lbfgs_lr: float = 1.0  # L-BFGS learning rate
     run_id: str | None = None  # Optional run ID for logging (overrides auto-generated)
 
     def __post_init__(self) -> None:
@@ -104,6 +109,9 @@ class TrainingConfig:
         assert self.log_every > 0, "log_every must be > 0"
         assert self.checkpoint_every > 0, "checkpoint_every must be > 0"
         assert self.patience >= 0, "patience must be >= 0"
+        if self.use_lbfgs:
+            assert self.lbfgs_warmup > 0, "lbfgs_warmup must be > 0"
+            assert self.lbfgs_max_iter > 0, "lbfgs_max_iter must be > 0"
         if self.resume:
             assert Path(self.resume).is_file(), (
                 f"Checkpoint file {self.resume} does not exist"
@@ -209,6 +217,9 @@ def main(config: TrainingConfig) -> None:
         gamma=config.scheduler_gamma,
     )
 
+    lbfgs_optimizer = None  # Will be created after warmup
+    using_lbfgs = False
+
     # --- RESUME FROM CHECKPOINT ---
     start_epoch = 1
     best_loss = float("inf")
@@ -233,7 +244,25 @@ def main(config: TrainingConfig) -> None:
     loss_count = 0
     for epoch in pbar:
         model.train()
-        optimizer.zero_grad(set_to_none=True)
+
+        # Switch to L-BFGS after warmup
+        if (
+            config.use_lbfgs
+            and not using_lbfgs
+            and epoch >= config.lbfgs_warmup + start_epoch
+        ):
+            print(f"\nSwitching to L-BFGS optimizer at epoch {epoch}")
+            lbfgs_params = list(model.parameters())
+            if adaptive_weighter is not None:
+                lbfgs_params += list(adaptive_weighter.parameters())
+            lbfgs_optimizer = torch.optim.LBFGS(
+                lbfgs_params,
+                lr=config.lbfgs_lr,
+                max_iter=config.lbfgs_max_iter,
+                history_size=config.lbfgs_history_size,
+                line_search_fn="strong_wolfe",
+            )
+            using_lbfgs = True
 
         # Physics loss - resample fresh collocation points each epoch
         xy_batch = torch.cat(
@@ -243,42 +272,62 @@ def main(config: TrainingConfig) -> None:
             ],
             dim=1,
         )
-        residual = compute_pde_residual(
-            model, xy_batch, material_props, normalize=config.normalize
-        )
-        loss_physics = zero_loss(criterion, residual)
 
-        # Boundary loss (essential BCs)
-        loss_boundary = compute_boundary_loss(model, boundary_data, criterion)
-
-        # Natural boundary conditions loss
-        loss_natural = compute_natural_bc_loss(
-            model, boundary_data, material_props, criterion, normalize=config.normalize
-        )
-
-        # Total loss (adaptive or manual weighting)
-        if adaptive_weighter is not None:
-            total_loss, eff_weights = adaptive_weighter(
-                loss_physics, loss_boundary, loss_natural
+        def compute_losses():
+            """Forward pass: compute all loss components."""
+            nonlocal eff_weights
+            residual = compute_pde_residual(
+                model, xy_batch, material_props, normalize=config.normalize
             )
-        else:
-            total_loss = (
-                config.lambda_physics * loss_physics
-                + config.lambda_boundary * loss_boundary
-                + config.lambda_natural * loss_natural
+            l_phys = zero_loss(criterion, residual)
+            l_bc = compute_boundary_loss(model, boundary_data, criterion)
+            l_nat = compute_natural_bc_loss(
+                model,
+                boundary_data,
+                material_props,
+                criterion,
+                normalize=config.normalize,
             )
+            if adaptive_weighter is not None:
+                total, eff_weights = adaptive_weighter(l_phys, l_bc, l_nat)
+            else:
+                total = (
+                    config.lambda_physics * l_phys
+                    + config.lambda_boundary * l_bc
+                    + config.lambda_natural * l_nat
+                )
+            return total, l_phys, l_bc, l_nat
 
-        total_loss.backward()
-        # Gradient clipping to stabilize training
-        torch.nn.utils.clip_grad_norm_(
-            model.parameters(), max_norm=config.max_grad_norm
-        )
-        if adaptive_weighter is not None:
+        def clip_grads():
             torch.nn.utils.clip_grad_norm_(
-                adaptive_weighter.parameters(), max_norm=config.max_grad_norm
+                model.parameters(), max_norm=config.max_grad_norm
             )
-        optimizer.step()
-        scheduler.step()
+            if adaptive_weighter is not None:
+                torch.nn.utils.clip_grad_norm_(
+                    adaptive_weighter.parameters(), max_norm=config.max_grad_norm
+                )
+
+        if using_lbfgs:
+            # L-BFGS needs a closure because it re-evaluates the loss
+            # multiple times per step during its line search.
+            total_loss = loss_physics = loss_boundary = loss_natural = torch.tensor(0.0)
+
+            def closure():
+                nonlocal total_loss, loss_physics, loss_boundary, loss_natural
+                lbfgs_optimizer.zero_grad(set_to_none=True)  # type: ignore[union-attr]
+                total_loss, loss_physics, loss_boundary, loss_natural = compute_losses()
+                total_loss.backward()
+                clip_grads()
+                return total_loss
+
+            lbfgs_optimizer.step(closure)  # type: ignore[union-attr]
+        else:
+            optimizer.zero_grad(set_to_none=True)
+            total_loss, loss_physics, loss_boundary, loss_natural = compute_losses()
+            total_loss.backward()
+            clip_grads()
+            optimizer.step()
+            scheduler.step()
 
         current_loss = total_loss.item()
         loss_accumulator += current_loss
