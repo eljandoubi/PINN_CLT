@@ -18,3 +18,8 @@ class EarlyStopping:
             return False
         self.counter += 1
         return self.counter >= self.patience
+
+    def reset(self) -> None:
+        """Reset the early stopping state."""
+        self.counter = 0
+        self.best_loss = None

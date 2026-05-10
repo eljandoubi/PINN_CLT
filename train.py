@@ -18,14 +18,11 @@ from data import (
     material_props,
 )
 from early_stopping import EarlyStopping
+from losses import clip_grads, compute_losses
 from model import (
     PINN,
     AdaptiveLossWeights,
     ReverseHuberLoss,
-    compute_boundary_loss,
-    compute_natural_bc_loss,
-    compute_pde_residual,
-    zero_loss,
 )
 from plotting import plot_displacement_3d
 from video import make_video
@@ -256,51 +253,6 @@ def main(config: TrainingConfig) -> None:
     # --- EARLY STOPPING ---
     early_stop = EarlyStopping(patience=config.patience)
 
-    # --- HELPER FUNCTIONS ---
-    def compute_losses(
-        xy_batch: torch.Tensor,
-    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, list[float]]:
-        """Forward pass: compute all loss components.
-
-        Returns:
-            (total_loss, physics_loss, boundary_loss, natural_loss, effective_weights)
-        """
-        residual = compute_pde_residual(
-            model, xy_batch, material_props, normalize=config.normalize
-        )
-        l_phys = zero_loss(criterion, residual)
-        l_bc = compute_boundary_loss(model, boundary_data, criterion)
-        l_nat = compute_natural_bc_loss(
-            model,
-            boundary_data,
-            material_props,
-            criterion,
-            normalize=config.normalize,
-        )
-        if adaptive_weighter is not None:
-            total, w = adaptive_weighter(l_phys, l_bc, l_nat)
-        else:
-            total = (
-                config.lambda_physics * l_phys
-                + config.lambda_boundary * l_bc
-                + config.lambda_natural * l_nat
-            )
-            w = [
-                config.lambda_physics,
-                config.lambda_boundary,
-                config.lambda_natural,
-            ]
-        return total, l_phys, l_bc, l_nat, w
-
-    def clip_grads():
-        torch.nn.utils.clip_grad_norm_(
-            model.parameters(), max_norm=config.max_grad_norm
-        )
-        if adaptive_weighter is not None:
-            torch.nn.utils.clip_grad_norm_(
-                adaptive_weighter.parameters(), max_norm=config.max_grad_norm
-            )
-
     # --- TRAINING LOOP ---
     pbar = trange(start_epoch, config.epochs + 1, desc="Training")
     loss_accumulator = 0.0
@@ -351,20 +303,42 @@ def main(config: TrainingConfig) -> None:
                     eff_weights
                 lbfgs_optimizer.zero_grad(set_to_none=True)  # type: ignore[union-attr]
                 total_loss, loss_physics, loss_boundary, loss_natural, eff_weights = (
-                    compute_losses(xy_batch)
+                    compute_losses(
+                        model,
+                        xy_batch,
+                        material_props,
+                        boundary_data,
+                        criterion,
+                        config.lambda_physics,
+                        config.lambda_boundary,
+                        config.lambda_natural,
+                        adaptive_weighter,
+                        config.normalize,
+                    )
                 )
                 total_loss.backward()
-                clip_grads()
+                clip_grads(model, config.max_grad_norm, adaptive_weighter)
                 return total_loss
 
             lbfgs_optimizer.step(closure)  # type: ignore[union-attr]
         else:
             optimizer.zero_grad(set_to_none=True)
             total_loss, loss_physics, loss_boundary, loss_natural, eff_weights = (
-                compute_losses(xy_batch)
+                compute_losses(
+                    model,
+                    xy_batch,
+                    material_props,
+                    boundary_data,
+                    criterion,
+                    config.lambda_physics,
+                    config.lambda_boundary,
+                    config.lambda_natural,
+                    adaptive_weighter,
+                    config.normalize,
+                )
             )
             total_loss.backward()
-            clip_grads()
+            clip_grads(model, config.max_grad_norm, adaptive_weighter)
             optimizer.step()
             scheduler.step()
 
@@ -405,6 +379,7 @@ def main(config: TrainingConfig) -> None:
                 and epoch % config.reset_period == 0
             ):
                 adaptive_weighter.reset()
+                early_stop.reset()
 
             # Early stopping on avg loss
             if early_stop.step(avg_loss):
