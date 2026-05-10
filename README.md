@@ -15,9 +15,10 @@ D11·∂⁴w/∂x⁴ + 2(D12 + 2·D66)·∂⁴w/∂x²∂y² + D22·∂⁴w/∂y
 - **Multiple loss functions** — MSE, Huber, Reverse Huber, and L1
 - **Automatic differentiation** — 4th-order derivatives computed via PyTorch autograd
 - **Mini-batch collocation** — fresh random domain points resampled each epoch
-- **Checkpointing & resume** — save/load full training state (model, optimizer, scheduler, L-BFGS)
-- **Early stopping** — configurable patience-based stopping on averaged loss
+- **Checkpointing & resume** — save/load full training state; best model tracked by averaged physics loss
+- **Early stopping** — configurable patience-based stopping on averaged physics loss
 - **L-BFGS fine-tuning** — optional switch to L-BFGS optimizer after Adam warmup for sharper convergence
+- **Optimizer state reset** — clears Adam/L-BFGS momentum for adaptive weight params on periodic reset
 - **W&B logging** — losses, learning rate, 3D displacement plots, training video, and model artifact upload
 - **CLI configuration** — all hyperparameters configurable via `simple-parsing`
 
