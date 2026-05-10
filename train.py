@@ -383,6 +383,12 @@ def main(config: TrainingConfig) -> None:
                 and epoch % config.reset_period == 0
             ):
                 adaptive_weighter.reset()
+                # Clear optimizer state for adaptive weight params
+                for p in adaptive_weighter.parameters():
+                    if p in optimizer.state:
+                        del optimizer.state[p]
+                    if lbfgs_optimizer is not None and p in lbfgs_optimizer.state:
+                        del lbfgs_optimizer.state[p]
                 early_stop.reset()
 
             # Early stopping on avg loss
