@@ -256,6 +256,7 @@ def main(config: TrainingConfig) -> None:
     # --- TRAINING LOOP ---
     pbar = trange(start_epoch, config.epochs + 1, desc="Training")
     loss_accumulator = 0.0
+    physics_accumulator = 0.0
     loss_count = 0
     epoch = start_epoch  # Default in case loop never runs
     for epoch in pbar:
@@ -344,15 +345,18 @@ def main(config: TrainingConfig) -> None:
 
         current_loss = total_loss.item()
         loss_accumulator += current_loss
+        physics_accumulator += loss_physics.item()
         loss_count += 1
 
         # Logging
         if epoch % config.log_every == 0:
             avg_loss = loss_accumulator / loss_count
+            avg_physics = physics_accumulator / loss_count
             log_dict = {
                 "loss/total": current_loss,
                 "loss/avg": avg_loss,
                 "loss/physics": loss_physics.item(),
+                "loss/avg_physics": avg_physics,
                 "loss/boundary": loss_boundary.item(),
                 "loss/natural": loss_natural.item(),
                 "loss/ratio_phys_bc": loss_physics.item()
@@ -388,8 +392,8 @@ def main(config: TrainingConfig) -> None:
 
             # Checkpoint + plot
             if epoch % config.checkpoint_every == 0:
-                if avg_loss < best_loss:
-                    best_loss = avg_loss
+                if avg_physics < best_loss:
+                    best_loss = avg_physics
                     # Save best model separately
                     save_checkpoint(
                         config.checkpoint_dir / "best.pt",
@@ -419,6 +423,7 @@ def main(config: TrainingConfig) -> None:
 
             # Reset accumulator
             loss_accumulator = 0.0
+            physics_accumulator = 0.0
             loss_count = 0
 
     # --- FINAL SAVE & PLOT ---
