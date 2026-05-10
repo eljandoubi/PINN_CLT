@@ -5,16 +5,18 @@ import torch
 import torch.nn as nn
 
 from data import boundary_data, material_props
+from losses import (
+    compute_boundary_loss,
+    compute_natural_bc_loss,
+    compute_pde_residual,
+    zero_loss,
+)
 from model import (
     FFMLP,
     PINN,
     AdaptiveLossWeights,
     ResidualBlock,
     ReverseHuberLoss,
-    compute_boundary_loss,
-    compute_natural_bc_loss,
-    compute_pde_residual,
-    zero_loss,
 )
 
 

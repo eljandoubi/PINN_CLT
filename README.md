@@ -25,7 +25,8 @@ D11·∂⁴w/∂x⁴ + 2(D12 + 2·D66)·∂⁴w/∂x²∂y² + D22·∂⁴w/∂y
 
 ```
 ├── data.py             # Material properties, geometry, boundary data generation
-├── model.py            # PINN architecture, PDE residual, boundary & natural BC losses
+├── model.py            # PINN architecture (network, residual blocks, adaptive weights)
+├── losses.py           # PDE residual, boundary/natural BC losses, gradient clipping
 ├── train.py            # Training loop with checkpointing, early stopping, W&B
 ├── checkpoint.py       # Save/load checkpoint utilities
 ├── early_stopping.py   # Early stopping class
@@ -35,6 +36,7 @@ D11·∂⁴w/∂x⁴ + 2(D12 + 2·D66)·∂⁴w/∂x²∂y² + D22·∂⁴w/∂y
 │   ├── test_checkpoint.py
 │   ├── test_data.py
 │   ├── test_early_stopping.py
+│   ├── test_losses.py
 │   ├── test_model.py
 │   └── test_train.py
 ├── pyproject.toml      # Project metadata & dependencies (managed by uv)
