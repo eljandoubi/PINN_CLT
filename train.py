@@ -391,9 +391,11 @@ def main(config: TrainingConfig) -> None:
                         del lbfgs_optimizer.state[p]
                 early_stop.reset()
 
-            # Early stopping on avg loss
-            if early_stop.step(avg_loss):
-                print(f"\nEarly stopping at epoch {epoch} (avg_loss={avg_loss:.6e})")
+            # Early stopping on avg physics loss
+            if early_stop.step(avg_physics):
+                print(
+                    f"\nEarly stopping at epoch {epoch} (avg_physics={avg_physics:.6e})"
+                )
                 break
 
             # Checkpoint + plot
