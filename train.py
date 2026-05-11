@@ -77,6 +77,7 @@ class TrainingConfig:
     normalize: bool = False  # Normalize PDE/natural BC losses by D11
     adaptive_weights: bool = False  # Use learnable adaptive loss weighting
     use_lbfgs: bool = False  # Switch to L-BFGS after warmup
+    only_counter: bool = True  # Only reset early stopping counter (not best_loss) when resetting adaptive weights
     lbfgs_warmup: int = 10000  # Number of Adam warmup epochs before switching to L-BFGS
     lbfgs_max_iter: int = 20  # Max iterations per L-BFGS step
     lbfgs_history_size: int = 50  # L-BFGS history size
@@ -389,7 +390,7 @@ def main(config: TrainingConfig) -> None:
                         del optimizer.state[p]
                     if lbfgs_optimizer is not None and p in lbfgs_optimizer.state:
                         del lbfgs_optimizer.state[p]
-                early_stop.reset()
+                early_stop.reset(only_counter=config.only_counter)
 
             # Early stopping on avg physics loss
             if early_stop.step(avg_physics):
