@@ -13,6 +13,7 @@ D11·∂⁴w/∂x⁴ + 2(D12 + 2·D66)·∂⁴w/∂x²∂y² + D22·∂⁴w/∂y
 - **Residual blocks** — optional ResNet-style MLP with LayerNorm for stable training
 - **Adaptive loss weighting** — learnable task weights via homoscedastic uncertainty (Kendall et al., 2018)
 - **Multiple loss functions** — MSE, Huber, Reverse Huber, and L1
+- **Smooth activation functions** — All activations are C∞ (infinitely differentiable), suitable for 4th-order PDE: `tanh`, `silu`, `gelu`, `softplus`, `mish`, `sigmoid`, `logsigmoid`, `tanhshrink`, `gaussian` (exp(−x²)), `sin`, `cos`
 - **Automatic differentiation** — 4th-order derivatives computed via PyTorch autograd
 - **Mini-batch collocation** — fresh random domain points resampled each epoch
 - **Checkpointing & resume** — save/load full training state; best model tracked by averaged physics loss
@@ -144,7 +145,7 @@ uv run train.py --help
 |-----------|---------|-------------|
 | `hidden_layers` | 4 | Number of hidden layers / residual blocks |
 | `hidden_units` | 128 | Neurons per hidden layer |
-| `activation` | `tanh` | Activation function (`tanh`, `silu`, `gelu`, `softplus`, `mish`) |
+| `activation` | `tanh` | Activation function (`tanh`, `silu`, `gelu`, `softplus`, `mish`, `sigmoid`, `logsigmoid`, `tanhshrink`, `gaussian`, `sin`, `cos`) |
 | `loss_fn` | `mse` | Loss function (`mse`, `huber`, `reverse_huber`, `l1`) |
 | `learning_rate` | 1e-3 | Adam learning rate |
 | `max_grad_norm` | 1.0 | Maximum gradient norm for clipping |

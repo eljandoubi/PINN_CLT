@@ -22,7 +22,10 @@ from losses import clip_grads, compute_losses
 from model import (
     PINN,
     AdaptiveLossWeights,
+    CosActivation,
+    GaussianActivation,
     ReverseHuberLoss,
+    SinActivation,
 )
 from plotting import plot_displacement_3d
 from video import make_video
@@ -50,7 +53,7 @@ class TrainingConfig:
 
     hidden_layers: int = 4
     hidden_units: int = 128
-    activation: Literal["tanh", "silu", "gelu", "softplus", "mish"] = "tanh"
+    activation: Literal["tanh", "silu", "gelu", "softplus", "mish", "sigmoid", "logsigmoid", "tanhshrink", "gaussian", "sin", "cos"] = "tanh"
     loss_fn: Literal["mse", "huber", "reverse_huber", "l1"] = "mse"
     learning_rate: float = 1e-3
     epochs: int = 100000
@@ -87,8 +90,8 @@ class TrainingConfig:
     def __post_init__(self) -> None:
         assert self.hidden_layers > 0, "hidden_layers must be > 0"
         assert self.hidden_units > 0, "hidden_units must be > 0"
-        assert self.activation in ("tanh", "silu", "gelu", "softplus", "mish"), (
-            f"activation must be one of tanh, silu, gelu, softplus, mish; got {self.activation}"
+        assert self.activation in ("tanh", "silu", "gelu", "softplus", "mish", "sigmoid", "logsigmoid", "tanhshrink", "gaussian", "sin", "cos"), (
+            f"activation must be one of tanh, silu, gelu, softplus, mish, sigmoid, logsigmoid, tanhshrink, gaussian, sin, cos; got {self.activation}"
         )
         assert self.loss_fn in ("mse", "huber", "reverse_huber", "l1"), (
             f"loss_fn must be one of mse, huber, reverse_huber, l1; got {self.loss_fn}"
@@ -169,6 +172,12 @@ def main(config: TrainingConfig) -> None:
         "gelu": nn.GELU,
         "softplus": nn.Softplus,
         "mish": nn.Mish,
+        "sigmoid": nn.Sigmoid,
+        "logsigmoid": nn.LogSigmoid,
+        "tanhshrink": nn.Tanhshrink,
+        "gaussian": GaussianActivation,
+        "sin": SinActivation,
+        "cos": CosActivation,
     }
     loss_fn_map = {
         "mse": nn.MSELoss(),

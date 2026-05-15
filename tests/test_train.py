@@ -51,7 +51,7 @@ class TestTrainingConfigValidation:
         with pytest.raises(AssertionError, match="activation must be one of"):
             TrainingConfig(activation="relu")  # type: ignore[arg-type]
 
-    @pytest.mark.parametrize("act", ["tanh", "silu", "gelu", "softplus", "mish"])
+    @pytest.mark.parametrize("act", ["tanh", "silu", "gelu", "softplus", "mish", "sigmoid", "logsigmoid", "tanhshrink", "gaussian", "sin", "cos"])
     def test_valid_activations(self, act):
         config = TrainingConfig(activation=act)  # type: ignore[arg-type]
         assert config.activation == act

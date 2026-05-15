@@ -2,6 +2,31 @@ import torch
 import torch.nn as nn
 
 
+class GaussianActivation(nn.Module):
+    """Gaussian activation: f(x) = exp(-x²). Infinitely differentiable (C∞)."""
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return torch.exp(-(x**2))
+
+
+class SinActivation(nn.Module):
+    """Sinusoidal activation: f(x) = sin(x). Infinitely differentiable (C∞).
+
+    Used in SIREN (Sinusoidal Representation Networks) for learning
+    high-frequency details in PDE solutions.
+    """
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return torch.sin(x)
+
+
+class CosActivation(nn.Module):
+    """Cosine activation: f(x) = cos(x). Infinitely differentiable (C∞)."""
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return torch.cos(x)
+
+
 class ReverseHuberLoss(nn.Module):
     """Reverse Huber loss: L1 for |error| <= delta, MSE for |error| > delta."""
 
