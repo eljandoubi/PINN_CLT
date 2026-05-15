@@ -208,7 +208,22 @@ class TestPINN:
         model = PINN(hidden_layers=2, hidden_units=32, use_ffmlp=True)
         assert model(torch.randn(8, 2)).shape == (8, 1)
 
-    @pytest.mark.parametrize("act", [nn.Tanh, nn.SiLU, nn.GELU, nn.Softplus, nn.Mish, nn.Sigmoid, nn.LogSigmoid, nn.Tanhshrink, GaussianActivation, SinActivation, CosActivation])
+    @pytest.mark.parametrize(
+        "act",
+        [
+            nn.Tanh,
+            nn.SiLU,
+            nn.GELU,
+            nn.Softplus,
+            nn.Mish,
+            nn.Sigmoid,
+            nn.LogSigmoid,
+            nn.Tanhshrink,
+            GaussianActivation,
+            SinActivation,
+            CosActivation,
+        ],
+    )
     def test_activations(self, act):
         model = PINN(hidden_layers=2, hidden_units=32, activation=act)
         assert model(torch.randn(4, 2)).shape == (4, 1)
