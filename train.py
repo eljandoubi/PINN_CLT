@@ -53,7 +53,19 @@ class TrainingConfig:
 
     hidden_layers: int = 4
     hidden_units: int = 128
-    activation: Literal["tanh", "silu", "gelu", "softplus", "mish", "sigmoid", "logsigmoid", "tanhshrink", "gaussian", "sin", "cos"] = "tanh"
+    activation: Literal[
+        "tanh",
+        "silu",
+        "gelu",
+        "softplus",
+        "mish",
+        "sigmoid",
+        "logsigmoid",
+        "tanhshrink",
+        "gaussian",
+        "sin",
+        "cos",
+    ] = "tanh"
     loss_fn: Literal["mse", "huber", "reverse_huber", "l1"] = "mse"
     learning_rate: float = 1e-3
     epochs: int = 100000
@@ -90,7 +102,19 @@ class TrainingConfig:
     def __post_init__(self) -> None:
         assert self.hidden_layers > 0, "hidden_layers must be > 0"
         assert self.hidden_units > 0, "hidden_units must be > 0"
-        assert self.activation in ("tanh", "silu", "gelu", "softplus", "mish", "sigmoid", "logsigmoid", "tanhshrink", "gaussian", "sin", "cos"), (
+        assert self.activation in (
+            "tanh",
+            "silu",
+            "gelu",
+            "softplus",
+            "mish",
+            "sigmoid",
+            "logsigmoid",
+            "tanhshrink",
+            "gaussian",
+            "sin",
+            "cos",
+        ), (
             f"activation must be one of tanh, silu, gelu, softplus, mish, sigmoid, logsigmoid, tanhshrink, gaussian, sin, cos; got {self.activation}"
         )
         assert self.loss_fn in ("mse", "huber", "reverse_huber", "l1"), (
