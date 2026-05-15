@@ -15,9 +15,73 @@ from model import (
     FFMLP,
     PINN,
     AdaptiveLossWeights,
+    CosActivation,
+    GaussianActivation,
     ResidualBlock,
     ReverseHuberLoss,
+    SinActivation,
 )
+
+
+# ---------------------------------------------------------------------------
+# GaussianActivation
+# ---------------------------------------------------------------------------
+class TestGaussianActivation:
+    def test_output_shape(self):
+        act = GaussianActivation()
+        x = torch.randn(16, 8)
+        assert act(x).shape == (16, 8)
+
+    def test_zero_input(self):
+        act = GaussianActivation()
+        x = torch.zeros(4)
+        torch.testing.assert_close(act(x), torch.ones(4))
+
+    def test_is_differentiable_4th_order(self):
+        """GaussianActivation must support at least 4th-order derivatives."""
+        act = GaussianActivation()
+        x = torch.randn(8, requires_grad=True)
+        y = act(x).sum()
+        (g1,) = torch.autograd.grad(y, x, create_graph=True)
+        (g2,) = torch.autograd.grad(g1.sum(), x, create_graph=True)
+        (g3,) = torch.autograd.grad(g2.sum(), x, create_graph=True)
+        (g4,) = torch.autograd.grad(g3.sum(), x, create_graph=True)
+        assert g4 is not None and not torch.isnan(g4).any()
+
+
+# ---------------------------------------------------------------------------
+# SinActivation / CosActivation
+# ---------------------------------------------------------------------------
+class TestSinCosActivation:
+    @pytest.mark.parametrize("act_cls", [SinActivation, CosActivation])
+    def test_output_shape(self, act_cls):
+        act = act_cls()
+        x = torch.randn(16, 8)
+        assert act(x).shape == (16, 8)
+
+    @pytest.mark.parametrize("act_cls", [SinActivation, CosActivation])
+    def test_is_differentiable_4th_order(self, act_cls):
+        """Sin/Cos activations must support at least 4th-order derivatives."""
+        act = act_cls()
+        x = torch.randn(8, requires_grad=True)
+        y = act(x).sum()
+        (g1,) = torch.autograd.grad(y, x, create_graph=True)
+        (g2,) = torch.autograd.grad(g1.sum(), x, create_graph=True)
+        (g3,) = torch.autograd.grad(g2.sum(), x, create_graph=True)
+        (g4,) = torch.autograd.grad(g3.sum(), x, create_graph=True)
+        assert g4 is not None and not torch.isnan(g4).any()
+
+    def test_sin_known_value(self):
+        act = SinActivation()
+        x = torch.tensor([0.0, 3.14159265 / 2])
+        out = act(x)
+        torch.testing.assert_close(out, torch.sin(x), atol=1e-6, rtol=1e-6)
+
+    def test_cos_known_value(self):
+        act = CosActivation()
+        x = torch.tensor([0.0, 3.14159265])
+        out = act(x)
+        torch.testing.assert_close(out, torch.cos(x), atol=1e-6, rtol=1e-6)
 
 
 # ---------------------------------------------------------------------------
@@ -144,7 +208,7 @@ class TestPINN:
         model = PINN(hidden_layers=2, hidden_units=32, use_ffmlp=True)
         assert model(torch.randn(8, 2)).shape == (8, 1)
 
-    @pytest.mark.parametrize("act", [nn.Tanh, nn.SiLU, nn.GELU, nn.Softplus, nn.Mish])
+    @pytest.mark.parametrize("act", [nn.Tanh, nn.SiLU, nn.GELU, nn.Softplus, nn.Mish, nn.Sigmoid, nn.LogSigmoid, nn.Tanhshrink, GaussianActivation, SinActivation, CosActivation])
     def test_activations(self, act):
         model = PINN(hidden_layers=2, hidden_units=32, activation=act)
         assert model(torch.randn(4, 2)).shape == (4, 1)
