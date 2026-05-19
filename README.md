@@ -7,6 +7,9 @@ The network learns the transverse displacement field `w(x, y)` by minimizing the
 D11·∂⁴w/∂x⁴ + 2(D12 + 2·D66)·∂⁴w/∂x²∂y² + D22·∂⁴w/∂y⁴ = q
 ```
 
+## My Solution
+![displacement field](assets/1779082278160.png)
+
 ## Features
 
 - **Orthotropic material model** — T300/5208 carbon fiber with full [Q] and [D] stiffness matrices
