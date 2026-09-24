@@ -70,10 +70,7 @@ def compute_pde_residual(
 
     # PDE residual (normalize by D11 to stabilize magnitudes)
     numerator = D11 * d4w_dx4 + 2 * (D12 + 2 * D66) * d4w_dx2dy2 + D22 * d4w_dy4 - q
-    if normalize:
-        residual = numerator / (D11 + 1e-12)
-    else:
-        residual = numerator
+    residual = numerator / (D11 + 1e-12) if normalize else numerator
 
     return residual
 

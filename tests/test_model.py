@@ -263,6 +263,20 @@ class TestZeroLoss:
         expected = ReverseHuberLoss()(x, torch.zeros_like(x))
         torch.testing.assert_close(result, expected)
 
+    @pytest.mark.parametrize("reduction", ["sum", "none"])
+    def test_mse_reductions(self, reduction):
+        x = torch.tensor([2.0, 3.0])
+        result = zero_loss(nn.MSELoss(reduction=reduction), x)
+        expected = nn.MSELoss(reduction=reduction)(x, torch.zeros_like(x))
+        torch.testing.assert_close(result, expected)
+
+    @pytest.mark.parametrize("reduction", ["sum", "none"])
+    def test_l1_reductions(self, reduction):
+        x = torch.tensor([-2.0, 3.0])
+        result = zero_loss(nn.L1Loss(reduction=reduction), x)
+        expected = nn.L1Loss(reduction=reduction)(x, torch.zeros_like(x))
+        torch.testing.assert_close(result, expected)
+
 
 # ---------------------------------------------------------------------------
 # PDE residual

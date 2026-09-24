@@ -97,7 +97,7 @@ class TestComputeLosses:
         model = PINN(hidden_layers=2, hidden_units=32)
         aw = AdaptiveLossWeights(num_losses=3, initial_weights=[1.0, 1.0, 1.0])
         xy = torch.rand(16, 2)
-        total, phys, bc, nat, weights = compute_losses(
+        total, _phys, _bc, _nat, weights = compute_losses(
             model,
             xy,
             material_props,
@@ -146,7 +146,7 @@ class TestComputeLosses:
     def test_zero_lambda_zeroes_component(self):
         model = PINN(hidden_layers=2, hidden_units=32)
         xy = torch.rand(16, 2)
-        total, phys, _, _, _ = compute_losses(
+        total, _phys, _, _, _ = compute_losses(
             model,
             xy,
             material_props,

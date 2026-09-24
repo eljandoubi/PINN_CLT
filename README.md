@@ -1,5 +1,11 @@
 # PINN-CLT: Physics-Informed Neural Network for Classical Lamination Theory
 
+[![CI](https://github.com/eljandoubi/PINN_CLT/actions/workflows/ci.yml/badge.svg)](https://github.com/eljandoubi/PINN_CLT/actions/workflows/ci.yml)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![Python 3.14+](https://img.shields.io/badge/python-3.14%2B-blue)](https://www.python.org/downloads/)
+[![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+
 A Physics-Informed Neural Network (PINN) for solving the orthotropic plate bending problem governed by Classical Lamination Theory (CLT).
 
 The network learns the transverse displacement field `w(x, y)` by minimizing the residual of the governing PDE:
@@ -9,6 +15,19 @@ D11·∂⁴w/∂x⁴ + 2(D12 + 2·D66)·∂⁴w/∂x²∂y² + D22·∂⁴w/∂y
 
 ## My Solution
 ![displacement field](assets/1779082278160.png)
+
+## Table of Contents
+
+- [Features](#features)
+- [Project Structure](#project-structure)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Configuration](#configuration)
+- [Boundary Conditions](#boundary-conditions)
+- [Material Properties](#material-properties-t3005208-carbon-fiber)
+- [Development](#development)
+- [Contributing](#contributing)
+- [License](#license)
 
 ## Features
 
@@ -25,6 +44,7 @@ D11·∂⁴w/∂x⁴ + 2(D12 + 2·D66)·∂⁴w/∂x²∂y² + D22·∂⁴w/∂y
 - **Optimizer state reset** — clears Adam/L-BFGS momentum for adaptive weight params on periodic reset
 - **W&B logging** — losses, learning rate, 3D displacement plots, training video, and model artifact upload
 - **CLI configuration** — all hyperparameters configurable via `simple-parsing`
+- **Fully tested** — 160+ pytest cases (unit + end-to-end training smoke tests) with >90% coverage, enforced in CI
 
 ## Project Structure
 
@@ -38,12 +58,18 @@ D11·∂⁴w/∂x⁴ + 2(D12 + 2·D66)·∂⁴w/∂x²∂y² + D22·∂⁴w/∂y
 ├── plotting.py         # 3D displacement field w(x,y) visualization
 ├── video.py            # Generate MP4/GIF video from plot frames
 ├── tests/              # Test suite (pytest)
+│   ├── conftest.py          # Shared fixtures (headless plotting, offline W&B)
 │   ├── test_checkpoint.py
 │   ├── test_data.py
 │   ├── test_early_stopping.py
+│   ├── test_integration.py  # End-to-end training smoke tests
 │   ├── test_losses.py
 │   ├── test_model.py
-│   └── test_train.py
+│   ├── test_plotting.py
+│   ├── test_train.py
+│   └── test_video.py
+├── .github/workflows/  # CI (lint + format + test on every push/PR)
+├── justfile            # Convenience commands (`just test`, `just lint`, ...)
 ├── pyproject.toml      # Project metadata & dependencies (managed by uv)
 └── LICENSE             # Apache 2.0
 ```
@@ -134,6 +160,8 @@ uv run video.py
 
 ```bash
 uv run pytest
+# or, with the justfile:
+just test
 ```
 
 ### All available options
@@ -197,6 +225,44 @@ uv run train.py --help
 | Thickness h | 5 mm |
 | Plate L × W | 1.0 m × 0.5 m |
 | Pressure q | 10 kPa |
+
+## Development
+
+This project uses [uv](https://github.com/astral-sh/uv) for dependency management and [ruff](https://github.com/astral-sh/ruff) for linting/formatting. A [`justfile`](justfile) wraps the common commands:
+
+```bash
+just install       # uv sync --locked (main deps + dev tools)
+just test          # run the full test suite (unit + slow smoke tests)
+just test-fast     # run only the fast unit tests
+just cov           # run tests with terminal + HTML coverage report
+just lint          # ruff check
+just fix           # ruff check --fix
+just format        # ruff format
+just format-check  # ruff format --check (no changes; used in CI)
+just check         # lint + format-check + cov (what CI runs)
+just train         # uv run train.py (extra args are forwarded, e.g. `just train --epochs 5000`)
+just video         # uv run video.py
+just clean         # remove caches, coverage, runs/, wandb/, checkpoints/, plots/
+```
+
+Don't have [`just`](https://github.com/casey/just) installed? Every recipe is a thin wrapper around a `uv run ...` command — see the [justfile](justfile) and run the equivalent command directly.
+
+### Testing
+
+The test suite (`tests/`) covers material/geometry data, model architecture, loss/PDE-residual math, checkpointing, early stopping, plotting, video generation, CLI config validation, and full end-to-end training runs (offline W&B, tiny models) — over 160 tests at >90% coverage.
+
+Slow, end-to-end tests are marked `@pytest.mark.slow`; skip them for a fast inner-loop with `just test-fast` or `uv run pytest -m "not slow"`.
+
+### Continuous Integration
+
+Every push and pull request to `main` runs [`.github/workflows/ci.yml`](.github/workflows/ci.yml): `ruff check`, `ruff format --check`, and the full test suite with a coverage gate (fails below 90%).
+
+## Contributing
+
+1. Fork and clone the repo, then run `uv sync` (or `just install`).
+2. Make your changes, adding/updating tests as needed.
+3. Run `just check` locally (mirrors CI) before opening a PR.
+4. Open a pull request describing the change and its motivation.
 
 ## License
 

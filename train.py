@@ -75,7 +75,7 @@ class TrainingConfig:
     scheduler_step: int = 10000
     scheduler_gamma: float = 0.5
     max_grad_norm: float = 1.0
-    batch_size: int = int(2**12)
+    batch_size: int = 2**12
     reset_period: int | None = (
         None  # If set, resets adaptive weights every N epochs (for long runs)
     )
@@ -503,5 +503,5 @@ if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_arguments(TrainingConfig, dest="training_config")
     args = parser.parse_args()
-    config = getattr(args, "training_config")
+    config = args.training_config
     main(config)
