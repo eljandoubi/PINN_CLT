@@ -44,3 +44,19 @@ class TestEarlyStopping:
         es = EarlyStopping(patience=5)
         assert es.best_loss is None
         assert es.counter == 0
+
+    def test_reset_only_counter_keeps_best_loss(self):
+        es = EarlyStopping(patience=3)
+        es.step(1.0)
+        es.step(1.1)  # worse 1 -> counter=1
+        es.reset(only_counter=True)
+        assert es.counter == 0
+        assert es.best_loss == 1.0
+
+    def test_reset_full_clears_best_loss(self):
+        es = EarlyStopping(patience=3)
+        es.step(1.0)
+        es.step(1.1)  # worse 1 -> counter=1
+        es.reset(only_counter=False)
+        assert es.counter == 0
+        assert es.best_loss is None

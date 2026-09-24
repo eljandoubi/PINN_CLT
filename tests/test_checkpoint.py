@@ -50,7 +50,7 @@ class TestCheckpoint:
         assert using_lbfgs is False
 
         # Model weights should match
-        for p1, p2 in zip(model.parameters(), model2.parameters()):
+        for p1, p2 in zip(model.parameters(), model2.parameters(), strict=True):
             torch.testing.assert_close(p1, p2)
 
     def test_save_load_with_adaptive(self, tmp_path):
@@ -101,7 +101,7 @@ class TestCheckpoint:
         )
 
         model2, optimizer2, scheduler2, _, lbfgs2 = _make_training_state(use_lbfgs=True)
-        epoch, best_loss, using_lbfgs = load_checkpoint(
+        epoch, _best_loss, using_lbfgs = load_checkpoint(
             path,
             model2,
             optimizer2,
