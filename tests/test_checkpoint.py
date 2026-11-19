@@ -1,4 +1,4 @@
-"""Tests for checkpoint.py — save/load round-trip."""
+"""Tests for checkpoint.py: save/load round-trip."""
 
 import torch
 

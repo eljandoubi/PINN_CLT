@@ -1,4 +1,4 @@
-"""Tests for video.py — frame-to-video assembly with GIF fallback."""
+"""Tests for video.py: frame-to-video assembly with GIF fallback."""
 
 from pathlib import Path
 

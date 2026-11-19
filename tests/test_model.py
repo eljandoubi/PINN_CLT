@@ -1,4 +1,4 @@
-"""Tests for model.py — architecture, losses, and PDE residual."""
+"""Tests for model.py: architecture, losses, and PDE residual."""
 
 import pytest
 import torch

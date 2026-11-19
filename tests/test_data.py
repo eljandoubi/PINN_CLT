@@ -1,4 +1,4 @@
-"""Tests for data.py — material properties and boundary data shapes."""
+"""Tests for data.py: material properties and boundary data shapes."""
 
 import torch
 

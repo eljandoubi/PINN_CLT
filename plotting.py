@@ -51,7 +51,7 @@ def plot_displacement_3d(
         ax.set_xlabel("x (m)")
         ax.set_ylabel("y (m)")
         ax.set_zlabel("w (m)")
-        ax.set_title(f"Displacement w(x, y) — Epoch {epoch} (3D)")
+        ax.set_title(f"Displacement w(x, y), epoch {epoch} (3D)")
         ax.view_init(elev=elev, azim=azim)
 
         path = save_dir / f"w_epoch_{epoch:06d}_3d.png"

@@ -1,4 +1,4 @@
-"""Tests for losses.py — compute_losses and clip_grads."""
+"""Tests for losses.py: compute_losses and clip_grads."""
 
 import torch
 import torch.nn as nn

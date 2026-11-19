@@ -1,4 +1,4 @@
-"""Tests for plotting.py — 3D displacement field visualization."""
+"""Tests for plotting.py: 3D displacement field visualization."""
 
 from pathlib import Path
 
