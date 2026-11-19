@@ -16,7 +16,7 @@ D11·∂⁴w/∂x⁴ + 2(D12 + 2·D66)·∂⁴w/∂x²∂y² + D22·∂⁴w/∂y
 ## My Solution
 ![displacement field](assets/1779082278160.png)
 
-An earlier checkpoint (epoch 81,000). Its colour scale spans about -0.007 m to 0.034 m, whereas the [reference solution](#reference-solution) peaks at 0.0295 m and vanishes on the clamped and simply supported edges, so this checkpoint is not converged. [`compare.py`](#comparing-a-trained-network) measures any checkpoint against the reference.
+An earlier checkpoint (epoch 81,000). Its colour scale spans about -0.007 m to 0.034 m, whereas the [reference solution](#reference-solution) peaks at 0.0295 m and vanishes on the clamped and simply supported edges, so this checkpoint is not converged. [`compare.py`](#comparing-a-trained-network) measures any checkpoint against the reference; a small run that reaches a relative L2 error of 2.1 percent is described under [Results](#results).
 
 ## Table of Contents
 
@@ -269,7 +269,39 @@ Pass the same architecture options as in training (`--hidden_layers`, `--hidden_
 | `*_center_deflection`, `*_max_deflection`, `*_min_deflection` | for the network and for the reference |
 | `network_boundary_rms`, `reference_boundary_rms` | root mean square residual of each boundary condition: deflection and slope relative to w_max, moments relative to D11 w_max / L^2. The reference gives the yardstick. The free-edge shear condition is not measured. |
 
-No comparison of a new training run is included yet. For planning: the default settings train at about 5.6 epochs per second on a Colab T4, so 10,000 epochs take about 30 minutes, and several seconds per epoch on a loaded laptop CPU.
+### Results
+
+A small network trained on a laptop CPU and measured against the 12 x 8 Ritz solution. The checkpoint is in [`results/cpu_run/final.pt`](results/cpu_run/final.pt), so `uv run compare.py --checkpoint results/cpu_run/final.pt --hidden_units 64` reproduces the tables below.
+
+```bash
+uv run train.py --epochs 10000 --batch_size 512 --hidden_units 64 --normalize true \
+  --scheduler_step 3000 --scheduler_gamma 0.5 --run_id small
+```
+
+The network has 4 hidden layers of 64 tanh units and sees 512 collocation points per epoch, with Adam at 1e-3 halved every 3,000 epochs. The default early stopping (patience of 10 checks, one every 100 epochs) ended the run at epoch 5,700 with a relative L2 error of 0.096. The run was then resumed from that checkpoint with early stopping switched off, up to the planned 10,000 epochs (the same options plus `--patience 1000 --resume runs/small/checkpoints/final.pt`). Training took about 31 minutes on 3 CPU threads.
+
+| metric | network | reference |
+| --- | --- | --- |
+| relative L2 error | 0.0214 | |
+| max error over max deflection | 0.0288 | |
+| centre deflection (m) | 2.78e-2 | 2.72e-2 |
+| max deflection (m) | 2.96e-2 | 2.95e-2 |
+
+Boundary conditions, as the root mean square residuals defined above:
+
+| condition | network | reference |
+| --- | --- | --- |
+| clamped deflection | 0.0120 | 0 |
+| clamped slope | 0.0420 | 0 |
+| supported deflection | 0.0092 | 0 |
+| supported moment | 0.092 | 0.0015 |
+| free-edge moment | 0.149 | 0.063 |
+
+![PINN, Ritz reference and their difference](results/cpu_run/comparison.png)
+
+The largest pointwise error is 2.9 percent of the peak deflection. The network meets the deflection conditions better than the moment conditions: its free-edge moment residual is more than twice the reference's.
+
+The loss weights mattered more than the length of training. [`results/cpu_run/pilots.json`](results/cpu_run/pilots.json) holds four 600-epoch runs of the same network. With the default weights the PDE term is about 7e4 and the boundary term about 13 at the end, and the relative error is 84. With `--normalize true` it is 1.47, with adaptive weights alone 57, and with both 1.71. This is one seed and one configuration, chosen after those four short runs by looking at the same reference, so the numbers show that the pipeline works, not a held-out accuracy.
 
 ### How the reference is verified
 
