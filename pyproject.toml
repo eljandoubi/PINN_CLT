@@ -61,7 +61,7 @@ filterwarnings = [
 [tool.coverage.run]
 branch = true
 source = ["."]
-omit = ["tests/*"]
+omit = ["tests/*", "scripts/*"]
 
 [tool.coverage.report]
 precision = 1
