@@ -27,6 +27,21 @@ class CosActivation(nn.Module):
         return torch.cos(x)
 
 
+ACTIVATIONS: dict[str, type[nn.Module]] = {
+    "tanh": nn.Tanh,
+    "silu": nn.SiLU,
+    "gelu": nn.GELU,
+    "softplus": nn.Softplus,
+    "mish": nn.Mish,
+    "sigmoid": nn.Sigmoid,
+    "logsigmoid": nn.LogSigmoid,
+    "tanhshrink": nn.Tanhshrink,
+    "gaussian": GaussianActivation,
+    "sin": SinActivation,
+    "cos": CosActivation,
+}
+
+
 class ReverseHuberLoss(nn.Module):
     """Reverse Huber loss: L1 for |error| <= delta, MSE for |error| > delta."""
 

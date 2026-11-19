@@ -20,12 +20,10 @@ from data import (
 from early_stopping import EarlyStopping
 from losses import clip_grads, compute_losses
 from model import (
+    ACTIVATIONS,
     PINN,
     AdaptiveLossWeights,
-    CosActivation,
-    GaussianActivation,
     ReverseHuberLoss,
-    SinActivation,
 )
 from plotting import plot_displacement_3d
 from video import make_video
@@ -190,19 +188,6 @@ def main(config: TrainingConfig) -> None:
     )
 
     # --- MODEL SETUP ---
-    activation_map = {
-        "tanh": nn.Tanh,
-        "silu": nn.SiLU,
-        "gelu": nn.GELU,
-        "softplus": nn.Softplus,
-        "mish": nn.Mish,
-        "sigmoid": nn.Sigmoid,
-        "logsigmoid": nn.LogSigmoid,
-        "tanhshrink": nn.Tanhshrink,
-        "gaussian": GaussianActivation,
-        "sin": SinActivation,
-        "cos": CosActivation,
-    }
     loss_fn_map = {
         "mse": nn.MSELoss(),
         "huber": nn.HuberLoss(),
@@ -213,7 +198,7 @@ def main(config: TrainingConfig) -> None:
     model = PINN(
         hidden_layers=config.hidden_layers,
         hidden_units=config.hidden_units,
-        activation=activation_map[config.activation],
+        activation=ACTIVATIONS[config.activation],
         use_residual=config.use_residual,
         use_norm=config.use_norm,
         use_ffmlp=config.use_ffmlp,
