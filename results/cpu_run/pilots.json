@@ -1,0 +1,31 @@
+{
+  "epochs": 600,
+  "network": "4 hidden layers of 64 tanh units, 512 collocation points per epoch, Adam at 1e-3",
+  "reference_center_deflection": 0.0272,
+  "runs": [
+    {
+      "options": "default loss weights",
+      "relative_l2_error": 83.94,
+      "max_error_over_max_deflection": 91.33,
+      "network_center_deflection": -1.392
+    },
+    {
+      "options": "--normalize true",
+      "relative_l2_error": 1.469,
+      "max_error_over_max_deflection": 1.535,
+      "network_center_deflection": 0.06151
+    },
+    {
+      "options": "--adaptive_weights true --lambda_physics 10.0",
+      "relative_l2_error": 57.44,
+      "max_error_over_max_deflection": 73.41,
+      "network_center_deflection": 0.8065
+    },
+    {
+      "options": "--normalize true --adaptive_weights true",
+      "relative_l2_error": 1.714,
+      "max_error_over_max_deflection": 1.792,
+      "network_center_deflection": 0.06511
+    }
+  ]
+}

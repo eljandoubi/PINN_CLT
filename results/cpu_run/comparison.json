@@ -1,0 +1,30 @@
+{
+  "checkpoint": "final.pt",
+  "ritz_basis": [
+    12,
+    8
+  ],
+  "ritz_condition_number": 22077.878692842787,
+  "relative_l2_error": 0.02137512444298593,
+  "max_error_over_max_deflection": 0.02878527184105634,
+  "reference_center_deflection": 0.027204569487504757,
+  "network_center_deflection": 0.027776390314102173,
+  "reference_max_deflection": 0.02953083304772899,
+  "network_max_deflection": 0.02962315082550049,
+  "reference_min_deflection": 0.0,
+  "network_min_deflection": -0.0005080997943878174,
+  "network_boundary_rms": {
+    "clamped_deflection": 0.01197279483896305,
+    "clamped_slope": 0.042033773561074524,
+    "supported_deflection": 0.009242053401895168,
+    "supported_moment": 0.09157284869515263,
+    "free_edge_moment": 0.14899325164847368
+  },
+  "reference_boundary_rms": {
+    "clamped_deflection": 0.0,
+    "clamped_slope": 0.0,
+    "supported_deflection": 0.0,
+    "supported_moment": 0.001474602727803583,
+    "free_edge_moment": 0.06257722885285236
+  }
+}
