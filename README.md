@@ -34,20 +34,20 @@ An earlier checkpoint (epoch 81,000). Its colour scale spans about -0.007 m to 0
 
 ## Features
 
-- **Orthotropic material model** — T300/5208 carbon fiber with full [Q] and [D] stiffness matrices
-- **Residual blocks** — optional ResNet-style MLP with LayerNorm for stable training
-- **Adaptive loss weighting** — learnable task weights via homoscedastic uncertainty (Kendall et al., 2018)
-- **Multiple loss functions** — MSE, Huber, Reverse Huber, and L1
-- **Smooth activation functions** — All activations are C∞ (infinitely differentiable), suitable for 4th-order PDE: `tanh`, `silu`, `gelu`, `softplus`, `mish`, `sigmoid`, `logsigmoid`, `tanhshrink`, `gaussian` (exp(−x²)), `sin`, `cos`
-- **Automatic differentiation** — 4th-order derivatives computed via PyTorch autograd
-- **Mini-batch collocation** — fresh random domain points resampled each epoch
-- **Checkpointing & resume** — save/load full training state; best model tracked by averaged physics loss
-- **Early stopping** — configurable patience-based stopping on averaged physics loss
-- **L-BFGS fine-tuning** — optional switch to L-BFGS optimizer after Adam warmup for sharper convergence
-- **Optimizer state reset** — clears Adam/L-BFGS momentum for adaptive weight params on periodic reset
-- **W&B logging** — losses, learning rate, 3D displacement plots, training video, and model artifact upload
-- **CLI configuration** — all hyperparameters configurable via `simple-parsing`
-- **Fully tested** — 160+ pytest cases (unit + end-to-end training smoke tests) with >90% coverage, enforced in CI
+- **Orthotropic material model**: T300/5208 carbon fiber with full [Q] and [D] stiffness matrices
+- **Residual blocks**: optional ResNet-style MLP with LayerNorm for stable training
+- **Adaptive loss weighting**: learnable task weights via homoscedastic uncertainty (Kendall et al., 2018)
+- **Multiple loss functions**: MSE, Huber, Reverse Huber, and L1
+- **Smooth activation functions**: all activations are C∞ (infinitely differentiable), suitable for 4th-order PDE: `tanh`, `silu`, `gelu`, `softplus`, `mish`, `sigmoid`, `logsigmoid`, `tanhshrink`, `gaussian` (exp(−x²)), `sin`, `cos`
+- **Automatic differentiation**: 4th-order derivatives computed via PyTorch autograd
+- **Mini-batch collocation**: fresh random domain points resampled each epoch
+- **Checkpointing & resume**: save/load full training state; best model tracked by averaged physics loss
+- **Early stopping**: configurable patience-based stopping on averaged physics loss
+- **L-BFGS fine-tuning**: optional switch to L-BFGS optimizer after Adam warmup for sharper convergence
+- **Optimizer state reset**: clears Adam/L-BFGS momentum for adaptive weight params on periodic reset
+- **W&B logging**: losses, learning rate, 3D displacement plots, training video, and model artifact upload
+- **CLI configuration**: all hyperparameters configurable via `simple-parsing`
+- **Fully tested**: 160+ pytest cases (unit + end-to-end training smoke tests) with >90% coverage, enforced in CI
 
 ## Project Structure
 
@@ -301,11 +301,11 @@ just video         # uv run video.py
 just clean         # remove caches, coverage, runs/, wandb/, checkpoints/, plots/
 ```
 
-Don't have [`just`](https://github.com/casey/just) installed? Every recipe is a thin wrapper around a `uv run ...` command — see the [justfile](justfile) and run the equivalent command directly.
+Don't have [`just`](https://github.com/casey/just) installed? Every recipe is a thin wrapper around a `uv run ...` command, see the [justfile](justfile) and run the equivalent command directly.
 
 ### Testing
 
-The test suite (`tests/`) covers material/geometry data, model architecture, loss/PDE-residual math, checkpointing, early stopping, plotting, video generation, CLI config validation, and full end-to-end training runs (offline W&B, tiny models) — over 160 tests at >90% coverage.
+The test suite (`tests/`) covers material/geometry data, model architecture, loss/PDE-residual math, checkpointing, early stopping, plotting, video generation, CLI config validation, and full end-to-end training runs (offline W&B, tiny models), with over 160 tests at >90% coverage.
 
 Slow, end-to-end tests are marked `@pytest.mark.slow`; skip them for a fast inner-loop with `just test-fast` or `uv run pytest -m "not slow"`.
 
@@ -322,4 +322,4 @@ Every push and pull request to `main` runs [`.github/workflows/ci.yml`](.github/
 
 ## License
 
-Apache 2.0 — see [LICENSE](LICENSE).
+Apache 2.0, see [LICENSE](LICENSE).
