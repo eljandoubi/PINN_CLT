@@ -127,6 +127,7 @@ def test_main_writes_the_report_and_the_figure(checkpoint, tmp_path):
     report = main([part for pair in options.items() for part in map(str, pair)])
     saved = json.loads((output / "comparison.json").read_text())
     assert saved == report
+    assert saved["checkpoint"] == checkpoint.name
     assert saved["ritz_basis"] == [6, 4]
     assert saved["relative_l2_error"] > 0.0
     assert (output / "comparison.png").stat().st_size > 0

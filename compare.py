@@ -15,6 +15,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+from matplotlib.ticker import MaxNLocator
 
 from data import PLATE_LENGTH, PLATE_WIDTH
 from model import ACTIVATIONS, PINN
@@ -138,7 +139,9 @@ def plot_comparison(result: Comparison, path: str | Path) -> Path:
         axis.set_xlabel("x (m)")
         axis.set_ylabel("y (m)")
         axis.set_aspect("equal")
-        figure.colorbar(image, ax=axis, orientation="horizontal", shrink=0.9)
+        colorbar = figure.colorbar(image, ax=axis, orientation="horizontal", shrink=0.9)
+        colorbar.locator = MaxNLocator(nbins=4)
+        colorbar.update_ticks()
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     figure.savefig(path, dpi=150)
@@ -186,7 +189,7 @@ def main(argv: list[str] | None = None) -> dict:
     output = Path(args.output)
     output.mkdir(parents=True, exist_ok=True)
     report = {
-        "checkpoint": str(args.checkpoint),
+        "checkpoint": Path(args.checkpoint).name,
         "ritz_basis": [args.basis_x, args.basis_y],
         "ritz_condition_number": reference.condition_number,
         **result.metrics,
