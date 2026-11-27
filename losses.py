@@ -51,7 +51,7 @@ def compute_pde_residual(
     # Third derivatives
     d3w_dx3 = torch.autograd.grad(d2w_dx2, x, grad_outputs=ones, create_graph=True)[0]
     d3w_dy3 = torch.autograd.grad(d2w_dy2, y, grad_outputs=ones, create_graph=True)[0]
-    # For mixed: d²(d²w/dx²)/dy² → differentiate d2w_dx2 w.r.t. y twice
+    # For mixed: d²(d²w/dx²)/dy² -> differentiate d2w_dx2 w.r.t. y twice
     d3w_dx2dy = torch.autograd.grad(d2w_dx2, y, grad_outputs=ones, create_graph=True)[0]
 
     # Fourth derivatives

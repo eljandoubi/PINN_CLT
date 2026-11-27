@@ -89,7 +89,7 @@ class TestReverseHuberLoss:
         loss_fn = ReverseHuberLoss(delta=10.0, reduction="none")
         pred = torch.tensor([0.1])
         target = torch.tensor([0.0])
-        # |error| = 0.1 < delta=10 → should equal L1
+        # |error| = 0.1 < delta=10 -> should equal L1
         result = loss_fn(pred, target)
         expected = torch.tensor([0.1])
         torch.testing.assert_close(result, expected)
@@ -98,7 +98,7 @@ class TestReverseHuberLoss:
         loss_fn = ReverseHuberLoss(delta=0.01, reduction="none")
         pred = torch.tensor([2.0])
         target = torch.tensor([0.0])
-        # |error| = 2.0 > delta=0.01 → should equal MSE = 4.0
+        # |error| = 2.0 > delta=0.01 -> should equal MSE = 4.0
         result = loss_fn(pred, target)
         expected = torch.tensor([4.0])
         torch.testing.assert_close(result, expected)

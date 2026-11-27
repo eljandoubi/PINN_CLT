@@ -14,14 +14,14 @@ class TestEarlyStopping:
         es.step(1.0)  # best
         es.step(1.1)  # worse 1
         es.step(1.2)  # worse 2
-        assert es.step(1.3) is True  # worse 3 → stop
+        assert es.step(1.3) is True  # worse 3 -> stop
 
     def test_counter_resets_on_improvement(self):
         es = EarlyStopping(patience=3)
         es.step(1.0)
         es.step(1.1)  # worse 1
         es.step(1.2)  # worse 2
-        es.step(0.5)  # improved → reset
+        es.step(0.5)  # improved -> reset
         assert es.counter == 0
         assert es.best_loss == 0.5
 
@@ -38,7 +38,7 @@ class TestEarlyStopping:
     def test_patience_zero_stops_immediately(self):
         es = EarlyStopping(patience=0)
         es.step(1.0)  # sets best
-        assert es.step(1.1) is True  # first non-improvement → stop
+        assert es.step(1.1) is True  # first non-improvement -> stop
 
     def test_initial_state(self):
         es = EarlyStopping(patience=5)
