@@ -23,9 +23,6 @@ from model import (
 )
 
 
-# ---------------------------------------------------------------------------
-# GaussianActivation
-# ---------------------------------------------------------------------------
 class TestGaussianActivation:
     def test_output_shape(self):
         act = GaussianActivation()
@@ -49,9 +46,6 @@ class TestGaussianActivation:
         assert g4 is not None and not torch.isnan(g4).any()
 
 
-# ---------------------------------------------------------------------------
-# SinActivation / CosActivation
-# ---------------------------------------------------------------------------
 class TestSinCosActivation:
     @pytest.mark.parametrize("act_cls", [SinActivation, CosActivation])
     def test_output_shape(self, act_cls):
@@ -84,9 +78,6 @@ class TestSinCosActivation:
         torch.testing.assert_close(out, torch.cos(x), atol=1e-6, rtol=1e-6)
 
 
-# ---------------------------------------------------------------------------
-# ReverseHuberLoss
-# ---------------------------------------------------------------------------
 class TestReverseHuberLoss:
     def test_output_is_scalar(self):
         loss = ReverseHuberLoss(delta=1.0)
@@ -122,9 +113,6 @@ class TestReverseHuberLoss:
             assert out.shape == ()
 
 
-# ---------------------------------------------------------------------------
-# AdaptiveLossWeights
-# ---------------------------------------------------------------------------
 class TestAdaptiveLossWeights:
     def test_initial_effective_weights(self):
         aw = AdaptiveLossWeights(num_losses=3, initial_weights=[1.0, 2.0, 3.0])
@@ -149,9 +137,6 @@ class TestAdaptiveLossWeights:
         torch.testing.assert_close(aw.log_vars.data, aw._initial_log_vars)
 
 
-# ---------------------------------------------------------------------------
-# FFMLP
-# ---------------------------------------------------------------------------
 class TestFFMLP:
     def test_output_shape(self):
         m = FFMLP(in_features=8, hidden_features=16, out_features=4)
@@ -163,9 +148,6 @@ class TestFFMLP:
         assert m(torch.randn(4, 8)).shape == (4, 8)
 
 
-# ---------------------------------------------------------------------------
-# ResidualBlock
-# ---------------------------------------------------------------------------
 class TestResidualBlock:
     def test_same_dim(self):
         rb = ResidualBlock(16, 16)
@@ -187,9 +169,6 @@ class TestResidualBlock:
         assert rb(torch.randn(4, 16)).shape == (4, 16)
 
 
-# ---------------------------------------------------------------------------
-# PINN
-# ---------------------------------------------------------------------------
 class TestPINN:
     def test_basic_forward(self):
         model = PINN(hidden_layers=2, hidden_units=32)
@@ -235,9 +214,6 @@ class TestPINN:
                 assert (m.bias == 0).all()
 
 
-# ---------------------------------------------------------------------------
-# zero_loss
-# ---------------------------------------------------------------------------
 class TestZeroLoss:
     def test_mse(self):
         x = torch.tensor([2.0, 3.0])
@@ -278,9 +254,6 @@ class TestZeroLoss:
         torch.testing.assert_close(result, expected)
 
 
-# ---------------------------------------------------------------------------
-# PDE residual
-# ---------------------------------------------------------------------------
 class TestPDEResidual:
     def test_output_shape(self):
         model = PINN(hidden_layers=2, hidden_units=32)
@@ -308,9 +281,6 @@ class TestPDEResidual:
         assert res_norm.abs().mean() < res_raw.abs().mean() + 1e-6
 
 
-# ---------------------------------------------------------------------------
-# Boundary & Natural BC losses
-# ---------------------------------------------------------------------------
 class TestBoundaryLoss:
     def test_scalar_output(self):
         model = PINN(hidden_layers=2, hidden_units=32)
